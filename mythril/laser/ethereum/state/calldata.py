@@ -310,3 +310,82 @@ class BasicSymbolicCalldata(BaseCalldata):
         :return:
         """
         return self._size
+class SymbolicCalldata_1(BaseCalldata):
+    """A class for representing symbolic call data."""
+    def __init__(self, tx_id: str, calldata: list) -> None:
+        """Initializes the SymbolicCalldata object.
+        :param tx_id: Id of the transaction that the calldata is for.
+        """
+        # self._calldata=Concat(calldata,Array("{}_calldata".format(tx_id), 256, 8))
+        # self._size = symbol_factory.BitVecSym(str(tx_id) + "_calldatasize", 256)
+
+        # # my_calldata = K(256, 8, 0)
+        # # my_calldata =Array(256, 256, 0)
+        # # my_calldata =Array(256, 256, 8)
+        # my_calldata = K(256, 8, 0)
+        # for i, element in enumerate(calldata, 0):
+        #     element = (
+        #         symbol_factory.BitVecVal(element, 8)
+        #         if isinstance(element, int)
+        #         else element
+        #     )
+        #     my_calldata[symbol_factory.BitVecVal(i, 256)] = element
+        # self._calldata=Concat(my_calldata,Array("{}_calldata".format(tx_id), 256, 8))
+        # self._size = symbol_factory.BitVecSym(str(tx_id) + "_calldatasize", 256)
+
+        self._calldata = Array("{}_calldata".format(tx_id), 256, 8)
+        j = 0
+        for i, element in enumerate(calldata, 0):
+            element = (
+                symbol_factory.BitVecVal(element, 8)
+                if isinstance(element, int)
+                else element
+            )
+            self._calldata[symbol_factory.BitVecVal(i, 256)] = element
+            j = j + 1
+        self._size = symbol_factory.BitVecSym(str(tx_id) + "_calldatasize", 256)
+
+        # self._calldata = Array("{}_calldata_arg".format(tx_id), 256, 8)
+        # self._calldata[symbol_factory.BitVecVal(i+1, 256)] = Array("{}_calldata_arg".format(tx_id), 256, 8)
+        # self._calldata[symbol_factory.BitVecVal(i + 1, 256)] = symbol_factory.BitVecSym("{}_calldata_arg".format(tx_id), 8)
+
+
+        super().__init__(tx_id)
+
+    def _load(self, item: Union[int, BitVec]) -> Any:
+        """
+
+        :param item:
+        :return:
+        """
+        item = symbol_factory.BitVecVal(item, 256) if isinstance(item, int) else item
+        return simplify(
+            If(
+                item < self._size,
+                simplify(self._calldata[cast(BitVec, item)]),
+                symbol_factory.BitVecVal(0, 8),
+            )
+        )
+
+    def concrete(self, model: Model) -> list:
+        """
+
+        :param model:
+        :return:
+        """
+        concrete_length = model.eval(self.size.raw, model_completion=True).as_long()
+        result = []
+        for i in range(concrete_length):
+            value = self._load(i)
+            c_value = model.eval(value.raw, model_completion=True).as_long()
+            result.append(c_value)
+
+        return result
+
+    @property
+    def size(self) -> BitVec:
+        """
+
+        :return:
+        """
+        return self._size

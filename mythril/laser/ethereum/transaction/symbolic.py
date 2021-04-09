@@ -6,7 +6,7 @@ from typing import Optional
 from mythril.disassembler.disassembly import Disassembly
 from mythril.laser.ethereum.cfg import Node, Edge, JumpType
 from mythril.laser.ethereum.state.account import Account
-from mythril.laser.ethereum.state.calldata import SymbolicCalldata
+from mythril.laser.ethereum.state.calldata import SymbolicCalldata, SymbolicCalldata_1
 from mythril.laser.ethereum.state.world_state import WorldState
 from mythril.laser.ethereum.transaction.transaction_models import (
     MessageCallTransaction,
@@ -106,6 +106,53 @@ def execute_message_call(laser_evm, callee_address: BitVec) -> None:
         _setup_global_state_for_execution(laser_evm, transaction)
 
     laser_evm.exec()
+
+
+def execute_message_call_1(laser_evm, callee_address: BitVec,ftn_selector:list) :
+    """Executes a message call transaction from all open states.
+
+    :param laser_evm:
+    :param callee_address:
+    """
+    # TODO: Resolve circular import between .transaction and ..svm to import LaserEVM here
+    print(ftn_selector)
+    open_states = laser_evm.open_states[:]
+    del laser_evm.open_states[:]
+
+    for open_world_state in open_states:
+        if open_world_state[callee_address].deleted:
+            log.debug("Can not execute dead contract, skipping.")
+            continue
+
+        next_transaction_id = get_next_transaction_id()
+        print(f'next_transaction_id ={next_transaction_id}')
+        external_sender = symbol_factory.BitVecSym(
+            "sender_{}".format(next_transaction_id), 256
+        )
+
+        transaction = MessageCallTransaction(
+            world_state=open_world_state,
+            identifier=next_transaction_id,
+            gas_price=symbol_factory.BitVecSym(
+                "gas_price{}".format(next_transaction_id), 256
+            ),
+            gas_limit=8000000,  # block gas limit
+            origin=external_sender,
+            caller=external_sender,
+            callee_account=open_world_state[callee_address],
+            # call_data=SymbolicCalldata(next_transaction_id),
+            # call_data=SymbolicCalldata_1(next_transaction_id,[45, 109, 48, 98]),
+            call_data=SymbolicCalldata_1(next_transaction_id, ftn_selector),
+            # call_data=ConcreteCalldata('next_transaction_id', [45, 109, 48, 98]),
+            # call_data=ConcreteCalldata('next_transaction_id', [45, 109, 48, 98,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3]),
+            call_value=symbol_factory.BitVecSym(
+                "call_value{}".format(next_transaction_id), 256
+            ),
+        )
+        _setup_global_state_for_execution(laser_evm, transaction)
+    return laser_evm.exec()
+
+
 
 
 def execute_contract_creation(

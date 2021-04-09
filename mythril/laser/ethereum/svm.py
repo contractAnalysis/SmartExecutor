@@ -5,6 +5,9 @@ from copy import copy
 from datetime import datetime, timedelta
 from typing import Callable, Dict, DefaultDict, List, Tuple, Optional
 
+from fdg.FDG import FDG
+from fdg.sequence import Sequence
+from mythril.laser.ethereum.transaction.symbolic import execute_message_call_1
 from mythril.support.opcodes import opcodes as OPCODES
 from mythril.analysis.potential_issues import check_potential_issues
 from mythril.laser.execution_info import ExecutionInfo
@@ -29,9 +32,18 @@ from mythril.laser.ethereum.transaction import (
 )
 from mythril.laser.smt import symbol_factory
 from mythril.support.support_args import args
-
+import numpy as np
 log = logging.getLogger(__name__)
 
+
+#@wei2
+functions_dict = {'f1': ['transferOwnership', ['owner'], ['owner'], 'f2fde38b'], 'f2': ['transfer', ['balances', 'mintingFinished'], ['balances'], 'a9059cbb'], 'f3': ['transferFrom', ['balances', 'mintingFinished', 'allowed'], ['allowed', 'balances'], '23b872dd'], 'f4': ['approve', ['mintingFinished'], ['allowed'], '095ea7b3'], 'f5': ['increaseApproval', [], ['allowed'], 'd73dd623'], 'f6': ['decreaseApproval', [], ['allowed'], '66188463'], 'f7': ['setMinter', ['owner'], ['minter'], 'fca3b5aa'], 'f8': ['mint', ['balances', 'minter', 'totalSupply'], ['balances', 'totalSupply'], '40c10f19'], 'f9': ['finishMinting', ['minter'], ['mintingFinished'], '7d64bcb4'], 'f10': ['setDestroyer', ['owner'], ['destroyer'], '6a7301b8'], 'f11': ['burn', ['balances', 'destroyer'], ['balances', 'totalSupply'], '42966c68'], 'f0': ['constructor', [], ['owner'], '8afc3605']}
+ftn_sequences=[['setDestroyer' , 'setMinter' , 'mint' , 'burn'],
+['setMinter' , 'finishMinting' , 'approve'],
+['setMinter' , 'finishMinting' , 'transferFrom'],
+['setMinter' , 'finishMinting' , 'transfer']]
+FALSE_DEPENDENCY=-3
+MISS_DEPENDENCY=-2
 
 class SVMError(Exception):
     """An exception denoting an unexpected state in symbolic execution."""
@@ -54,12 +66,14 @@ class LaserEVM:
         self,
         dynamic_loader=None,
         max_depth=float("inf"),
-        execution_timeout=60,
+        #execution_timeout=60,
+        execution_timeout=360,
         create_timeout=10,
         strategy=DepthFirstSearchStrategy,
         transaction_count=2,
         requires_statespace=True,
         iprof=None,
+        fdg=None,#@wei
     ) -> None:
         """
         Initializes the laser evm object
@@ -73,6 +87,15 @@ class LaserEVM:
         :param requires_statespace: Variable indicating whether the statespace should be recorded
         :param iprof: Instruction Profiler
         """
+
+        self.fdg=fdg#FDG(functions_dict)#@wei2
+        if fdg is not None:
+            self.OS_whole=[]#@wei2 # save open states for each depth
+            self.ftn_executed_mark = np.zeros([self.fdg.num_ftn])
+        else:
+            self.OS_whole = []
+            self.ftn_executed_mark=[]
+
         self.execution_info = []  # type: List[ExecutionInfo]
 
         self.open_states = []  # type: List[WorldState]
@@ -152,7 +175,11 @@ class LaserEVM:
         if pre_configuration_mode:
             self.open_states = [world_state]
             log.info("Starting message call transaction to {}".format(target_address))
-            self._execute_transactions(symbol_factory.BitVecVal(target_address, 256))
+
+            if self.fdg is not None:#@wei
+                self._execute_transactions_3(symbol_factory.BitVecVal(target_address, 256))
+            else:
+                self._execute_transactions(symbol_factory.BitVecVal(target_address, 256))
 
         elif scratch_mode:
             log.info("Starting contract creation transaction")
@@ -171,8 +198,11 @@ class LaserEVM:
                     "No contract was created during the execution of contract creation "
                     "Increase the resources for creation execution (--max-depth or --create-timeout)"
                 )
+            if self.fdg is not None:  # @wei
+                self._execute_transactions_3(created_account.address)
+            else:
+                self._execute_transactions(created_account.address)
 
-            self._execute_transactions(created_account.address)
 
         log.info("Finished symbolic execution")
         if self.requires_statespace:
@@ -182,9 +212,11 @@ class LaserEVM:
                 len(self.edges),
                 self.total_states,
             )
-
+        if self.fdg is not None:
+            self.fdg.write_CSV('/media/sf___share_vms/fdg_matrix_after.csv') #@wei
         for hook in self._stop_sym_exec_hooks:
             hook()
+
 
     def _execute_transactions(self, address):
         """This function executes multiple transactions on the address
@@ -217,6 +249,147 @@ class LaserEVM:
 
             for hook in self._stop_sym_trans_hooks:
                 hook()
+
+    def _symbolic_transaction_whole(self,address):
+        if len(self.open_states)>0:
+            # old_states_count = len(self.open_states)
+            # self.open_states = [
+            #     state for state in self.open_states if state.constraints.is_possible
+            # ]
+            # prune_count = old_states_count - len(self.open_states)
+            # if prune_count:
+            #     log.info("Pruned {} unreachable states".format(prune_count))
+            log.info(
+                "the symbolic transaction on the whole contrcat on {} initial state(s)".format(
+                    len(self.open_states)
+                )
+            )
+            for hook in self._start_sym_trans_hooks:
+                hook()
+            execute_message_call(self, address)
+
+            for hook in self._stop_sym_trans_hooks:
+                hook()
+
+    def _symbolic_transaction_ftn(self, address,ftn_name):
+
+        log.info(
+            "Starting message call transaction for function 0x{},on {} initial states".format(
+                ftn_name, len(self.open_states))
+        )
+        for hook in self._start_sym_trans_hooks:
+            hook()
+        ftn_4byte_list=self.fdg.ftn_to_4bytes[ftn_name]
+        execute_message_call_1(self, address, ftn_4byte_list)
+        for hook in self._stop_sym_trans_hooks:
+            hook()
+
+
+    # require FDG.py
+    def _execute_transactions_3(self, address): #@wei
+        """This function executes multiple transactions on the address
+
+        :param address: Address of the contract
+        :return:
+        """
+        self.time = datetime.now()
+
+        #+++++++++++++++++++++++++++++++++++#
+        # at depth=0
+        #+++++++++++++++++++++++++++++++++++#
+        print(f'==== the first symbolic transaction on the whole contrcat ====')
+        self._symbolic_transaction_whole(address)
+
+        # save the open states after the first symbolic transaction
+        self.OS_whole.append([copy(state) for state in self.open_states if state.constraints.is_possible])
+        self.ftn_executed_mark[0]=1
+
+        # check if the corresponding function reached is indicated in fdg or not
+        for state in self.OS_whole[0]:
+            ftn_name = state.node.function_name.split("(")[0]
+            idx = self.fdg.ftn_to_index[ftn_name]
+            self.ftn_executed_mark[idx]=1 # indicate it is covered
+            if self.fdg.matrix_fdg[0, idx, 0] == -1:  # if no, miss dependency
+                self.fdg.update(0, idx, 0, MISS_DEPENDENCY) # -2, update fdg. #wei_should_fix the state can not be considered later since no function depends on the function of this state in fdg
+
+        #+++++++++++++++++++++++++++++++++++#
+        # when 0<depth< limit(specified)
+        #+++++++++++++++++++++++++++++++++++#
+        # reach to a specified depth, determined by self.fdg
+        for d in range(1,self.fdg.depth_all_ftns_reached):
+            print(f'+++ depth={d} +++')
+            ftn_reached_pre =self.fdg.ftn_reached_at_a_depth(d)
+            os_states=[] # save generated states
+            for open_state in self.OS_whole[d-1]:
+
+                ftn_name = open_state.node.function_name.split("(")[0]  # only get function name without parentheses ()
+                print(f'@wei evaluate children functions of {ftn_name}')
+                # get the functions reached by (dependent on) the function with identifier: ftn_identifier
+                ftn_reached_list=self.fdg.next_ftn_indices(d,ftn_name)
+
+                for ftn_idx in ftn_reached_list:
+
+                    # do symbolic execution
+                    self.open_states=[open_state]
+                    ftn_n=self.fdg.index_to_ftn[ftn_idx]
+                    self._symbolic_transaction_ftn(address,ftn_n)
+
+                    #get open state
+                    if self.open_states is not None:
+                    #if len(self.open_states)>0:
+                        os_temp=[copy(state) for state in self.open_states if state.constraints.is_possible]
+                        print(f'# of states in self.open_states:{len(os_temp)}')
+                        if len(os_temp)==0:
+                            self.fdg.matrix_fdg[d,ftn_idx,self.fdg.ftn_to_index[ftn_name]]=FALSE_DEPENDENCY
+                        else:
+                            os_states+=copy(os_temp)
+                            self.ftn_executed_mark[ftn_idx]=1 # marks that function with index ftn_idx is evaluated successfully
+            self.OS_whole.append(copy(os_states))
+
+            # check if there are functions not reachable after dfg updation
+            # if yes, then remove their dependencies at next depth
+            ftn_reached_after=self.fdg.ftn_reached_at_a_depth(d)
+            dif=set(ftn_reached_pre).difference(set(ftn_reached_after))
+            dif=list(dif)
+            if len(dif)>0:
+                for ftn_idx in dif:
+                    self.fdg.matrix_fdg[d+1,:,ftn_idx][self.fdg.matrix_fdg[d+1,:,ftn_idx]>=0]=FALSE_DEPENDENCY
+
+        #+++++++++++++++++++++++++++++++++++#
+        # check which functions are not executed (or failed
+        #+++++++++++++++++++++++++++++++++++#
+
+        ftn_idx_failed=np.where(self.ftn_executed_mark==0)[0]
+        for idx in ftn_idx_failed:
+            ftn_name=self.fdg.index_to_ftn[idx]
+            seq=Sequence(self.fdg,ftn_name)
+            sequences_dict=seq.final_depth_sequences()
+            for depth,sequence in sequences_dict.items():
+                for s in sequence:
+                    # to find the right state on which symbolic transaction is built
+                    for state in self.OS_whole[depth-1]:
+                        # match the state's function name with the first function in the sequence
+                        if state.node.function_name.split("(")[0]==self.fdg.index_to_ftn[s[0]]:
+                            # start symbolic transaction for other functions in the sequence
+                            self.open_states=[state]
+                            for ftn_idx in s[1:]:
+                                ftn_n=self.fdg.index_to_ftn[ftn_idx]
+                                self._symbolic_transaction_ftn(address,ftn_n)
+                                os_temp = [copy(state) for state in self.open_states if state.constraints.is_possible]
+                                if len(os_temp) > 0:
+                                    self.ftn_executed_mark[ftn_idx] = 1
+                                    self.open_states=copy(os_temp)
+                                else: # no open states generated, stop
+                                    break
+                        if self.ftn_executed_mark[idx]==1:# stop finding states and matching function names
+                            break
+
+                    if self.ftn_executed_mark[idx]==1: # stop executing left function sequences
+                        break
+        print(f'functions executed with revert')
+        print(self.fdg.index_to_ftn[idx])
+
+
 
     def _check_create_termination(self) -> bool:
         if len(self.open_states) != 0:

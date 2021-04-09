@@ -59,6 +59,7 @@ class SymExecWrapper:
         disable_dependency_pruning: bool = False,
         run_analysis_modules: bool = True,
         custom_modules_directory: str = "",
+        fdg=None #@wei
     ):
         """
 
@@ -78,6 +79,7 @@ class SymExecWrapper:
         :param enable_coverage_strategy: Boolean indicating whether the coverage strategy should be enabled
         :param custom_modules_directory: The directory to read custom analysis modules from
         """
+        self.fdg=fdg#@wei
         if isinstance(address, str):
             address = symbol_factory.BitVecVal(int(address, 16), 256)
         if isinstance(address, int):
@@ -121,6 +123,7 @@ class SymExecWrapper:
             create_timeout=create_timeout,
             transaction_count=transaction_count,
             requires_statespace=requires_statespace,
+            fdg=self.fdg#@wei
         )
 
         if loop_bound is not None:

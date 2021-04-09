@@ -16,6 +16,7 @@ import traceback
 
 import mythril.support.signatures as sigs
 from argparse import ArgumentParser, Namespace, RawTextHelpFormatter
+
 from mythril import mythx
 from mythril.exceptions import (
     AddressNotFoundError,
@@ -34,6 +35,8 @@ from mythril.mythril import (
 from mythril.analysis.module import ModuleLoader
 
 from mythril.__version__ import __version__ as VERSION
+
+
 
 # Initialise core Mythril Component
 _ = MythrilPluginLoader()
@@ -376,6 +379,10 @@ def create_analyzer_parser(analyzer_parser: ArgumentParser):
         "usage: file1.sol:OptionalContractName file2.sol file3.sol:OptionalContractName",
     )
     commands = analyzer_parser.add_argument_group("commands")
+    # @wei
+    commands.add_argument("-fdg", "--function_dependency_graph", default=False, action='store_true',
+                          help="indicate if function dependency graph is used to guide state exploration")
+
     commands.add_argument("-g", "--graph", help="generate a control flow graph")
     commands.add_argument(
         "-j",
@@ -682,6 +689,7 @@ def execute_command(
 
     elif args.command in ANALYZE_LIST:
         analyzer = MythrilAnalyzer(
+            fdg_flag=args.function_dependency_graph,  #@wei  a flag
             strategy=args.strategy,
             disassembler=disassembler,
             address=address,

@@ -5,6 +5,7 @@ import logging
 import traceback
 from typing import Optional, List
 
+from fdg.funtion_info import Function_info
 from mythril.laser.ethereum.iprof import InstructionProfiler
 from . import MythrilDisassembler
 from mythril.support.source_support import Source
@@ -20,9 +21,11 @@ from mythril.laser.smt import SolverStatistics
 from mythril.support.start_time import StartTime
 from mythril.exceptions import DetectorNotFoundError
 from mythril.laser.execution_info import ExecutionInfo
-
+from fdg.FDG import FDG
 log = logging.getLogger(__name__)
 
+
+functions_dict = {'f1': ['transferOwnership', ['owner'], ['owner'], 'f2fde38b'], 'f2': ['transfer', ['balances', 'mintingFinished'], ['balances'], 'a9059cbb'], 'f3': ['transferFrom', ['balances', 'mintingFinished', 'allowed'], ['allowed', 'balances'], '23b872dd'], 'f4': ['approve', ['mintingFinished'], ['allowed'], '095ea7b3'], 'f5': ['increaseApproval', [], ['allowed'], 'd73dd623'], 'f6': ['decreaseApproval', [], ['allowed'], '66188463'], 'f7': ['setMinter', ['owner'], ['minter'], 'fca3b5aa'], 'f8': ['mint', ['balances', 'minter', 'totalSupply'], ['balances', 'totalSupply'], '40c10f19'], 'f9': ['finishMinting', ['minter'], ['mintingFinished'], '7d64bcb4'], 'f10': ['setDestroyer', ['owner'], ['destroyer'], '6a7301b8'], 'f11': ['burn', ['balances', 'destroyer'], ['balances', 'totalSupply'], '42966c68'], 'f0': ['constructor', [], ['owner'], '8afc3605']}
 
 class MythrilAnalyzer:
     """
@@ -50,6 +53,8 @@ class MythrilAnalyzer:
         parallel_solving: bool = False,
         call_depth_limit: int = 3,
         solver_log: Optional[str] = None,
+        fdg_flag=False, #@wei
+
     ):
         """
 
@@ -57,6 +62,18 @@ class MythrilAnalyzer:
         :param requires_dynld: whether dynamic loading should be done or not
         :param onchain_storage_access: Whether onchain access should be done or not
         """
+        # when contract name is given, dissasembly has only one contract
+        # when contract name is not given, dissasembly has the number of contracts in the given solidity file
+        if fdg_flag:#@wei
+            # self.fdg = FDG(functions_dict)
+            file_path = disassembler.contracts[0].input_file
+            contract_name = disassembler.contracts[0].name
+            function_info=Function_info(file_path,contract_name)
+            self.fdg=FDG(function_info.functions_dict_slither())
+            # print(f'contract={contract}\nfile_path={file_path}')
+        else:
+            self.fdg =None
+
         self.eth = disassembler.eth
         self.contracts = disassembler.contracts or []  # type: List[EVMContract]
         self.enable_online_lookup = disassembler.enable_online_lookup
@@ -94,6 +111,7 @@ class MythrilAnalyzer:
             disable_dependency_pruning=self.disable_dependency_pruning,
             run_analysis_modules=False,
             custom_modules_directory=self.custom_modules_directory,
+            fdg=self.fdg #@wei here
         )
 
         return get_serializable_statespace(sym)
@@ -126,6 +144,7 @@ class MythrilAnalyzer:
             disable_dependency_pruning=self.disable_dependency_pruning,
             run_analysis_modules=False,
             custom_modules_directory=self.custom_modules_directory,
+            fdg=self.fdg #@wei
         )
         return generate_graph(sym, physics=enable_physics, phrackify=phrackify)
 
@@ -160,6 +179,7 @@ class MythrilAnalyzer:
                     compulsory_statespace=False,
                     disable_dependency_pruning=self.disable_dependency_pruning,
                     custom_modules_directory=self.custom_modules_directory,
+                    fdg=self.fdg #@wei
                 )
                 issues = fire_lasers(sym, modules)
                 execution_info = sym.execution_info
