@@ -115,7 +115,7 @@ def execute_message_call_1(laser_evm, callee_address: BitVec,ftn_selector:list) 
     :param callee_address:
     """
     # TODO: Resolve circular import between .transaction and ..svm to import LaserEVM here
-    print(ftn_selector)
+
     open_states = laser_evm.open_states[:]
     del laser_evm.open_states[:]
 
@@ -125,7 +125,7 @@ def execute_message_call_1(laser_evm, callee_address: BitVec,ftn_selector:list) 
             continue
 
         next_transaction_id = get_next_transaction_id()
-        print(f'next_transaction_id ={next_transaction_id}')
+
         external_sender = symbol_factory.BitVecSym(
             "sender_{}".format(next_transaction_id), 256
         )

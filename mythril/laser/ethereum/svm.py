@@ -212,8 +212,12 @@ class LaserEVM:
                 len(self.edges),
                 self.total_states,
             )
+            print(f'#@statespace')
+            print("{} nodes, {} edges, {} total states".format(len(self.nodes), len(self.edges), self.total_states))
+
         if self.fdg is not None:
-            self.fdg.write_CSV('/media/sf___share_vms/fdg_matrix_after.csv') #@wei
+            # self.fdg.write_CSV('/media/sf___share_vms/fdg_matrix_after.csv') #@wei
+            pass
         for hook in self._stop_sym_exec_hooks:
             hook()
 
@@ -297,7 +301,6 @@ class LaserEVM:
         #+++++++++++++++++++++++++++++++++++#
         # at depth=0
         #+++++++++++++++++++++++++++++++++++#
-        print(f'==== the first symbolic transaction on the whole contrcat ====')
         self._symbolic_transaction_whole(address)
 
         # save the open states after the first symbolic transaction
@@ -317,13 +320,13 @@ class LaserEVM:
         #+++++++++++++++++++++++++++++++++++#
         # reach to a specified depth, determined by self.fdg
         for d in range(1,self.fdg.depth_all_ftns_reached):
-            print(f'+++ depth={d} +++')
+
             ftn_reached_pre =self.fdg.ftn_reached_at_a_depth(d)
             os_states=[] # save generated states
             for open_state in self.OS_whole[d-1]:
 
                 ftn_name = open_state.node.function_name.split("(")[0]  # only get function name without parentheses ()
-                print(f'@wei evaluate children functions of {ftn_name}')
+
                 # get the functions reached by (dependent on) the function with identifier: ftn_identifier
                 ftn_reached_list=self.fdg.next_ftn_indices(d,ftn_name)
 
@@ -338,7 +341,7 @@ class LaserEVM:
                     if self.open_states is not None:
                     #if len(self.open_states)>0:
                         os_temp=[copy(state) for state in self.open_states if state.constraints.is_possible]
-                        print(f'# of states in self.open_states:{len(os_temp)}')
+
                         if len(os_temp)==0:
                             self.fdg.matrix_fdg[d,ftn_idx,self.fdg.ftn_to_index[ftn_name]]=FALSE_DEPENDENCY
                         else:
@@ -363,7 +366,7 @@ class LaserEVM:
         for idx in ftn_idx_failed:
             ftn_name=self.fdg.index_to_ftn[idx]
             seq=Sequence(self.fdg,ftn_name)
-            sequences_dict=seq.final_depth_sequences()
+            sequences_dict=seq.generate_depth_seqeunces()
             for depth,sequence in sequences_dict.items():
                 for s in sequence:
                     # to find the right state on which symbolic transaction is built
@@ -386,7 +389,7 @@ class LaserEVM:
 
                     if self.ftn_executed_mark[idx]==1: # stop executing left function sequences
                         break
-        print(f'functions executed with revert')
+        print(f'#@functions not evaluated successfully')
         print(self.fdg.index_to_ftn[idx])
 
 

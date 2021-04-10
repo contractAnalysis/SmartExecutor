@@ -1,7 +1,7 @@
 
 from slither.slither import Slither
 from slither.utils.function import get_function_id
-
+import sha3
 class Function_info():
     def __init__(self,solidity_file:str, contract_name:str):
         self.solidity_file=solidity_file
@@ -36,7 +36,9 @@ class Function_info():
             #     continue
             if f.is_constructor: continue
 
-            func_hash = str(hex(get_function_id(f.full_name))).strip('0x')
+
+
+            func_hash = self.get_function_id(f.full_name)
 
             r_list = []
             f_r = f.all_conditional_state_variables_read()
@@ -71,6 +73,17 @@ class Function_info():
 
         return function_dict
 
+    def get_function_id(self,sig: str) ->str:
+        """'
+            Return the function id of the given signature
+        Args:
+            sig (str)
+        Return:
+            (int)
+        """
+        s = sha3.keccak_256()
+        s.update(sig.encode("utf-8"))
+        return s.hexdigest()[:8]
 
 if __name__=='__main__':
     # ftn_info=Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken')

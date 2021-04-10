@@ -15,5 +15,6 @@ if __name__ == "__main__":
     mythril.interfaces.cli.main()
     # exit()
     seconds_end = time.time()
+    print(f'#@time')
     print(f'time used:{seconds_end-seconds_start}')
 

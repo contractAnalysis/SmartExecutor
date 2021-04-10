@@ -1,9 +1,4 @@
 from copy import copy
-
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import networkx as nx
-# import fdg.Data_handle as dh
 import numpy as np
 import csv
 
@@ -18,7 +13,7 @@ class FDG():
         key: [function_name,read_sv_list,write_sv_list,identifier]
          {'f1': ['transferOwnership', ['owner'], ['owner'], 'f2fde38b'], ...}
         """
-
+        self.limit_maximum_depth=5
         self.ftn_to_index={}
         self.index_to_ftn={}
         self.ftn_to_4bytes={}
@@ -75,7 +70,7 @@ class FDG():
                 if np.array_equal(item,-np.ones(self.num_label)):
                     self.matrix_fdg[0, j, 0] = self.num_label
 
-        for i in range(4): # the maximum depth to 10
+        for i in range(self.limit_maximum_depth): # the maximum depth to 10
             # in the case of constructor and functions having empty sv_read list
             if i==0:
                 write_sv_ary=self.sv_write[0]
@@ -93,7 +88,6 @@ class FDG():
 
             # in the case of other functions with indices >0
             # get function indices that can be reached from the immediate previous step
-
             ftn_reached=self.ftn_reached_at_a_depth(-1)
 
             matrix_i = -np.ones((1, self.num_ftn, self.num_ftn))
@@ -134,14 +128,12 @@ class FDG():
         if len(re)>0:return False
         else: return True
 
-    def max_depth(self):
-        return self.matrix_fdg.shape[0] # -1 since the last element is either all zeros or belongs to the immediate previous element
 
     def depth_all_nodes_reached(self):
         # return the depth (starting with 1) that all function is reached
         mark=np.zeros(self.num_ftn)
         mark[0]=1 # ignore function constructor
-        for i in range(self.max_depth()):
+        for i in range(self.matrix_fdg.shape[0]):
             ftn_reached=self.ftn_reached_at_a_depth(i)
             for idx in ftn_reached:
                 mark[idx]=1
@@ -227,18 +219,17 @@ class FDG():
 
 
 if __name__=='__main__':
-    # # get data needed to draw graph
-    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/wei_test.sol', 'wei_test')
-    # functionsDict,_=ftn_info.functions_dict_slither()
-    #
-    # # functions_dict = dh.functions_dict_txt(dh.datafile)
-    # fdg=FDG(functionsDict)
-    # print(fdg.matrix_fdg)
+    # get data needed to draw graph
+    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken')
+    functionsDict=ftn_info.functions_dict_slither()
+    print(functionsDict)
 
-    fdg = FDG(Function_info('/home/wei/PycharmProjects/Contracts/_wei/wei_test.sol', 'wei_test').functions_dict_slither())
-
+    fdg=FDG(functionsDict)
     print(fdg.matrix_fdg)
-    print(fdg.depth_all_ftns_reached)
+
+    # fdg = FDG(Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken').functions_dict_slither())
+    # print(fdg.matrix_fdg)
+    # print(fdg.depth_all_ftns_reached)
 
 
     # #====================================
