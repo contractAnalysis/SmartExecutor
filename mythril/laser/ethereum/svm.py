@@ -36,12 +36,12 @@ import numpy as np
 log = logging.getLogger(__name__)
 
 
-#@wei2
-functions_dict = {'f1': ['transferOwnership', ['owner'], ['owner'], 'f2fde38b'], 'f2': ['transfer', ['balances', 'mintingFinished'], ['balances'], 'a9059cbb'], 'f3': ['transferFrom', ['balances', 'mintingFinished', 'allowed'], ['allowed', 'balances'], '23b872dd'], 'f4': ['approve', ['mintingFinished'], ['allowed'], '095ea7b3'], 'f5': ['increaseApproval', [], ['allowed'], 'd73dd623'], 'f6': ['decreaseApproval', [], ['allowed'], '66188463'], 'f7': ['setMinter', ['owner'], ['minter'], 'fca3b5aa'], 'f8': ['mint', ['balances', 'minter', 'totalSupply'], ['balances', 'totalSupply'], '40c10f19'], 'f9': ['finishMinting', ['minter'], ['mintingFinished'], '7d64bcb4'], 'f10': ['setDestroyer', ['owner'], ['destroyer'], '6a7301b8'], 'f11': ['burn', ['balances', 'destroyer'], ['balances', 'totalSupply'], '42966c68'], 'f0': ['constructor', [], ['owner'], '8afc3605']}
-ftn_sequences=[['setDestroyer' , 'setMinter' , 'mint' , 'burn'],
-['setMinter' , 'finishMinting' , 'approve'],
-['setMinter' , 'finishMinting' , 'transferFrom'],
-['setMinter' , 'finishMinting' , 'transfer']]
+# #@wei2
+# functions_dict = {'f1': ['transferOwnership', ['owner'], ['owner'], 'f2fde38b'], 'f2': ['transfer', ['balances', 'mintingFinished'], ['balances'], 'a9059cbb'], 'f3': ['transferFrom', ['balances', 'mintingFinished', 'allowed'], ['allowed', 'balances'], '23b872dd'], 'f4': ['approve', ['mintingFinished'], ['allowed'], '095ea7b3'], 'f5': ['increaseApproval', [], ['allowed'], 'd73dd623'], 'f6': ['decreaseApproval', [], ['allowed'], '66188463'], 'f7': ['setMinter', ['owner'], ['minter'], 'fca3b5aa'], 'f8': ['mint', ['balances', 'minter', 'totalSupply'], ['balances', 'totalSupply'], '40c10f19'], 'f9': ['finishMinting', ['minter'], ['mintingFinished'], '7d64bcb4'], 'f10': ['setDestroyer', ['owner'], ['destroyer'], '6a7301b8'], 'f11': ['burn', ['balances', 'destroyer'], ['balances', 'totalSupply'], '42966c68'], 'f0': ['constructor', [], ['owner'], '8afc3605']}
+# ftn_sequences=[['setDestroyer' , 'setMinter' , 'mint' , 'burn'],
+# ['setMinter' , 'finishMinting' , 'approve'],
+# ['setMinter' , 'finishMinting' , 'transferFrom'],
+# ['setMinter' , 'finishMinting' , 'transfer']]
 FALSE_DEPENDENCY=-3
 MISS_DEPENDENCY=-2
 
@@ -216,7 +216,7 @@ class LaserEVM:
             print("{} nodes, {} edges, {} total states".format(len(self.nodes), len(self.edges), self.total_states))
 
         if self.fdg is not None:
-            # self.fdg.write_CSV('/media/sf___share_vms/fdg_matrix_after.csv') #@wei
+            self.fdg.write_CSV('./fdg_matrix_update.csv') #@wei
             pass
         for hook in self._stop_sym_exec_hooks:
             hook()
@@ -309,7 +309,7 @@ class LaserEVM:
 
         # check if the corresponding function reached is indicated in fdg or not
         for state in self.OS_whole[0]:
-            ftn_name = state.node.function_name.split("(")[0]
+            ftn_name = state.node.function_name
             idx = self.fdg.ftn_to_index[ftn_name]
             self.ftn_executed_mark[idx]=1 # indicate it is covered
             if self.fdg.matrix_fdg[0, idx, 0] == -1:  # if no, miss dependency
@@ -325,7 +325,7 @@ class LaserEVM:
             os_states=[] # save generated states
             for open_state in self.OS_whole[d-1]:
 
-                ftn_name = open_state.node.function_name.split("(")[0]  # only get function name without parentheses ()
+                ftn_name = open_state.node.function_name  # only get function name without parentheses ()
 
                 # get the functions reached by (dependent on) the function with identifier: ftn_identifier
                 ftn_reached_list=self.fdg.next_ftn_indices(d,ftn_name)
@@ -372,7 +372,7 @@ class LaserEVM:
                     # to find the right state on which symbolic transaction is built
                     for state in self.OS_whole[depth-1]:
                         # match the state's function name with the first function in the sequence
-                        if state.node.function_name.split("(")[0]==self.fdg.index_to_ftn[s[0]]:
+                        if state.node.function_name==self.fdg.index_to_ftn[s[0]]:
                             # start symbolic transaction for other functions in the sequence
                             self.open_states=[state]
                             for ftn_idx in s[1:]:
@@ -389,8 +389,13 @@ class LaserEVM:
 
                     if self.ftn_executed_mark[idx]==1: # stop executing left function sequences
                         break
-        print(f'#@functions not evaluated successfully')
-        print(self.fdg.index_to_ftn[idx])
+        # output functions not evaluated successfully
+        ftn_idx_failed=np.where(self.ftn_executed_mark==0)[0]
+        if len(ftn_idx_failed)>0:
+            print(f'#@functions not evaluated successfully')
+            for idx in ftn_idx_failed:
+                print(self.fdg.index_to_ftn[idx])
+
 
 
 

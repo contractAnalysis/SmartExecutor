@@ -58,6 +58,7 @@ class FDG():
                     b[lbl_index] = lbl_index
             key = key.split('f')
             key_idx=int(key[1],10)
+
             self.sv_read[key_idx]=a.T
             self.sv_write[key_idx] = b.T
 
@@ -220,7 +221,7 @@ class FDG():
 
 if __name__=='__main__':
     # get data needed to draw graph
-    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken')
+    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/example_contracts/QCH.sol', 'QCH')
     functionsDict=ftn_info.functions_dict_slither()
     print(functionsDict)
 

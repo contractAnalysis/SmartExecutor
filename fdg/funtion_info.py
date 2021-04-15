@@ -51,7 +51,7 @@ class Function_info():
                 w_list = [sv.name for sv in f_w]
 
             if len(r_list) != 0 or len(w_list) != 0:
-                function_dict['f' + str(i)] = [f.name, r_list, w_list, func_hash]
+                function_dict['f' + str(i)] = [f.full_name, r_list, w_list, func_hash]
                 i = i + 1
 
         # check if constructor is included or not. if not, add it
