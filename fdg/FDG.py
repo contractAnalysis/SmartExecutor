@@ -1,9 +1,10 @@
 from copy import copy
 import numpy as np
 import csv
-
+import sys
+import ast
 from fdg.funtion_info import Function_info
-
+import json
 
 class FDG():
 
@@ -38,29 +39,30 @@ class FDG():
             self.label_to_index[item]=idx
 
         self.num_ftn=len(self.ftn_to_index)
+        self.num_ftn=len(list(functions_dict.keys()))
         self.num_label=len(self.label_to_index)
 
         self.sv_read =-np.ones((self.num_ftn,self.num_label))
         self.sv_write = -np.ones((self.num_ftn,self.num_label))
         for key,value in functions_dict.items():
-            a=-np.ones(self.num_label)
-            b = -np.ones(self.num_label)
+            read=-np.ones(self.num_label)
+            write = -np.ones(self.num_label)
             if len(value[1])!=0:
                 for label in value[1]:
                     lbl_index=self.label_to_index[label]
                     # a[lbl_index]=1
-                    a[lbl_index] = lbl_index
+                    read[lbl_index] = lbl_index
 
             if len(value[2]) != 0:
                 for label in value[2]:
                     lbl_index = self.label_to_index[label]
                     # b[lbl_index] = 1
-                    b[lbl_index] = lbl_index
+                    write[lbl_index] = lbl_index
             key = key.split('f')
             key_idx=int(key[1],10)
 
-            self.sv_read[key_idx]=a.T
-            self.sv_write[key_idx] = b.T
+            self.sv_read[key_idx]=read.T
+            self.sv_write[key_idx] = write.T
 
         # build fdg
         self.matrix_fdg=-np.ones((1,self.num_ftn,self.num_ftn))
@@ -140,6 +142,7 @@ class FDG():
                 mark[idx]=1
             if len(mark[mark==1])==self.num_ftn:
                 return i+1
+        return self.matrix_fdg.shape[0]
 
     def ftn_reached_at_a_depth(self,depth)->list:
         re = self.matrix_fdg[depth, :, :]
@@ -214,39 +217,102 @@ class FDG():
                     writer.writerow(row)
                 writer.writerow('\n')
 
+    def useful_data(self):
+        print(f'depth_all_ftns_reached:{self.depth_all_ftns_reached}')
+        print(f'max_depth:{self.matrix_fdg.shape[0]}')
+        print(f'labels:{self.labels}')
+        print(f'functions:{list(self.ftn_to_index.keys())}')
 
+def write_csv_useful_data(file_containing_useful_data,csv_file):
+    with open(csv_file, 'w', newline='\n') as file:
+        writer = csv.writer(file)
+        csv_write_line=[]
+        flag_1_read=False
+        with open(file_containing_useful_data,'r') as useful_data:
+            for line in useful_data.readlines():
+                line=line.strip('\n').strip()
+                if len(line)==0:
+                    continue
+                if line[0:len('++++')]=='++++':
+                    if flag_1_read:
+                        writer.writerow(csv_write_line)
 
+                    line=line.strip('++++')
+                    line_eles=line.split(':')
+                    csv_write_line=[]
+                    # csv_write_line=[ele.strip() for ele in line_eles]
+                    for ele in line_eles:
+                        csv_write_line.append(ele.strip())
+                    flag_1_read=True
+                elif line[0:len('depth_all_ftns_reached')]=='depth_all_ftns_reached':
+                    csv_write_line+=[line.split(':')[1]]
+                elif line[0:len('max_depth')] == 'max_depth':
+                    csv_write_line += [line.split(':')[1]]
+                elif line[0:len('labels')] == 'labels':
+                    labels=line.split(':')[1].strip()
 
+                    labels1 = ast.literal_eval(labels)
+
+                    if isinstance(labels1,list):
+                        for label in labels1:
+                            csv_write_line.append(label)
+
+                elif line[0:len('functions')] == 'functions':
+                    functions=line.split(':')[1]
+                    functions = ast.literal_eval(functions)
+                    if isinstance(functions,list):
+                        for ftn in functions:
+                            csv_write_line.append(ftn)
+
+        writer.writerow(csv_write_line) # write the last record
 
 
 if __name__=='__main__':
+    # if len(sys.argv)==5:
+    #     file_path=sys.argv[1]+sys.argv[2]
+    #     ftn_info= Function_info(file_path,sys.argv[3])
+    #     functionsDict = ftn_info.functions_dict_slither()
+    #     fdg=FDG(functionsDict )
+    #     fdg.write_CSV(sys.argv[4])
+    #     fdg.useful_data()
+    # elif len(sys.argv)==3:
+    #     write_csv_useful_data(sys.argv[1],sys.argv[2])
+    # else:
+    #     print("please provide three arguments: directory, solidity file, and contract name")
+
+    # #==============
+    # file='/home/wei/PycharmProjects/Contracts/example/FDG/FDG_useful_data.txt'
+    # write_csv_useful_data(file, 'sss.csv')
+
+
+
     # get data needed to draw graph
-    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/example_contracts/QCH.sol', 'QCH')
+    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/example/contracts/TRP_RED.sol','TRP_RED')
     functionsDict=ftn_info.functions_dict_slither()
     print(functionsDict)
 
     fdg=FDG(functionsDict)
     print(fdg.matrix_fdg)
 
-    # fdg = FDG(Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken').functions_dict_slither())
-    # print(fdg.matrix_fdg)
-    # print(fdg.depth_all_ftns_reached)
-
-
-    # #====================================
-    # functions_dict={'f1': ['transferOwnership', ['owner'], ['owner'], 'f2fde38b'], 'f2': ['transfer', ['balances', 'mintingFinished'], ['balances'], 'a9059cbb'], 'f3': ['transferFrom', ['balances', 'mintingFinished', 'allowed'], ['allowed', 'balances'], '23b872dd'], 'f4': ['approve', ['mintingFinished'], ['allowed'], '095ea7b3'], 'f5': ['increaseApproval', [], ['allowed'], 'd73dd623'], 'f6': ['decreaseApproval', [], ['allowed'], '66188463'], 'f7': ['setMinter', ['owner'], ['minter'], 'fca3b5aa'], 'f8': ['mint', ['balances', 'minter', 'totalSupply'], ['balances', 'totalSupply'], '40c10f19'], 'f9': ['finishMinting', ['minter'], ['mintingFinished'], '7d64bcb4'], 'f10': ['setDestroyer', ['owner'], ['destroyer'], '6a7301b8'], 'f11': ['burn', ['balances', 'destroyer'], ['balances', 'totalSupply'], '42966c68'], 'f0': ['constructor', [], ['owner'], '8afc3605']}
-    # fdg=FDG(functions_dict)
-    # print(fdg.depth_all_ftns_reached)
-
+    # # fdg = FDG(Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken').functions_dict_slither())
+    # # print(fdg.matrix_fdg)
+    # # print(fdg.depth_all_ftns_reached)
     #
-    # a=np.array([2,3,4,5])
-    # b=a[a>2]
-    # print(a)
-    # print(b)
-
-    # print(set(fdg.ftn_reached_at_a_depth(1)).difference(set(fdg.ftn_reached_at_a_depth(2))))
-
-    # fdg.write_CSV('/media/sf___share_vms/fdg_matrix.csv')
+    #
+    # # #====================================
+    # # functions_dict={'f1': ['transferOwnership', ['owner'], ['owner'], 'f2fde38b'], 'f2': ['transfer', ['balances', 'mintingFinished'], ['balances'], 'a9059cbb'], 'f3': ['transferFrom', ['balances', 'mintingFinished', 'allowed'], ['allowed', 'balances'], '23b872dd'], 'f4': ['approve', ['mintingFinished'], ['allowed'], '095ea7b3'], 'f5': ['increaseApproval', [], ['allowed'], 'd73dd623'], 'f6': ['decreaseApproval', [], ['allowed'], '66188463'], 'f7': ['setMinter', ['owner'], ['minter'], 'fca3b5aa'], 'f8': ['mint', ['balances', 'minter', 'totalSupply'], ['balances', 'totalSupply'], '40c10f19'], 'f9': ['finishMinting', ['minter'], ['mintingFinished'], '7d64bcb4'], 'f10': ['setDestroyer', ['owner'], ['destroyer'], '6a7301b8'], 'f11': ['burn', ['balances', 'destroyer'], ['balances', 'totalSupply'], '42966c68'], 'f0': ['constructor', [], ['owner'], '8afc3605']}
+    # # fdg=FDG(functions_dict)
+    # # print(fdg.depth_all_ftns_reached)
+    #
+    # #
+    # # a=np.array([2,3,4,5])
+    # # b=a[a>2]
+    # # print(a)
+    # # print(b)
+    #
+    # # print(set(fdg.ftn_reached_at_a_depth(1)).difference(set(fdg.ftn_reached_at_a_depth(2))))
+    #
+    # # fdg.write_CSV('/media/sf___share_vms/fdg_matrix.csv')
 
 
 
