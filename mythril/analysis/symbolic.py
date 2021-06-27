@@ -25,6 +25,7 @@ from mythril.laser.plugin.plugins import (
     CoveragePluginBuilder,
     CallDepthLimitBuilder,
     InstructionProfilerBuilder,
+    FDG_prunerBuilder,
 )
 from mythril.laser.ethereum.strategy.extensions.bounded_loops import (
     BoundedLoopsStrategy,
@@ -59,7 +60,7 @@ class SymExecWrapper:
         disable_dependency_pruning: bool = False,
         run_analysis_modules: bool = True,
         custom_modules_directory: str = "",
-        fdg=None #@wei
+        fdg:bool=False,
     ):
         """
 
@@ -78,8 +79,9 @@ class SymExecWrapper:
         :param run_analysis_modules: Boolean indicating whether analysis modules should be executed
         :param enable_coverage_strategy: Boolean indicating whether the coverage strategy should be enabled
         :param custom_modules_directory: The directory to read custom analysis modules from
+        :param fdg: Boolean indicating whether to apply function dependency graph pruner
         """
-        self.fdg=fdg#@wei
+
         if isinstance(address, str):
             address = symbol_factory.BitVecVal(int(address, 16), 256)
         if isinstance(address, int):
@@ -123,7 +125,8 @@ class SymExecWrapper:
             create_timeout=create_timeout,
             transaction_count=transaction_count,
             requires_statespace=requires_statespace,
-            fdg=self.fdg#@wei
+            fdg=fdg
+
         )
 
         if loop_bound is not None:
@@ -138,8 +141,12 @@ class SymExecWrapper:
             "call-depth-limit", call_depth_limit=args.call_depth_limit
         )
 
+
         if not disable_dependency_pruning:
             plugin_loader.load(DependencyPrunerBuilder())
+        if fdg:#@wei add FDG_pruner plugin
+            plugin_loader.load(FDG_prunerBuilder())
+            # disable_dependency_pruning=True
 
         plugin_loader.instrument_virtual_machine(self.laser, None)
 

@@ -6,7 +6,7 @@ from mythril.laser.ethereum.state.annotation import (
 from copy import copy
 from typing import Dict, List, Set
 import logging
-
+from mythril.laser.ethereum.state.global_state import GlobalState
 log = logging.getLogger(__name__)
 
 
@@ -36,6 +36,7 @@ class DependencyAnnotation(MergeableStateAnnotation):
         self.has_call = False  # type: bool
         self.path = [0]  # type: List
         self.blocks_seen = set()  # type: Set[int]
+        self.ftn_seq=[]#@wei
 
     def __copy__(self):
         result = DependencyAnnotation()
@@ -44,6 +45,7 @@ class DependencyAnnotation(MergeableStateAnnotation):
         result.has_call = self.has_call
         result.path = copy(self.path)
         result.blocks_seen = copy(self.blocks_seen)
+        result.ftn_seq = copy(self.ftn_seq)
         return result
 
     def get_storage_write_cache(self, iteration: int):
@@ -64,6 +66,7 @@ class DependencyAnnotation(MergeableStateAnnotation):
         merged_annotation.blocks_seen = self.blocks_seen.union(other.blocks_seen)
         merged_annotation.has_call = self.has_call
         merged_annotation.path = copy(self.path)
+        merged_annotation.ftn_seq = copy(self.ftn_seq) #@wei
         merged_annotation.storage_loaded = self.storage_loaded.union(
             other.storage_loaded
         )
@@ -88,9 +91,11 @@ class WSDependencyAnnotation(MergeableStateAnnotation):
     def __init__(self):
         self.annotations_stack: List[DependencyAnnotation] = []
 
+
     def __copy__(self):
         result = WSDependencyAnnotation()
         result.annotations_stack = copy(self.annotations_stack)
+
         return result
 
     def check_merge_annotation(self, annotation: "WSDependencyAnnotation") -> bool:
@@ -121,3 +126,77 @@ class WSDependencyAnnotation(MergeableStateAnnotation):
                 merged_annotation.annotations_stack.append(copy(a1))
             merged_annotation.annotations_stack.append(a1.merge_annotation(a2))
         return merged_annotation
+
+
+class FunctionAnnotation(MergeableStateAnnotation):
+    """Dependency Annotation
+
+    This annotation tracks read and write access to the state during each transaction.
+    """
+
+    def __init__(self):
+        self.function_seq=[]#@wei
+
+
+    def __copy__(self):
+        result = FunctionAnnotation()
+        result.function_seq = copy(self.function_seq)
+
+        return result
+    def check_merge_annotation(self, other: "FunctionAnnotation"):
+        # if not isinstance(other, FunctionAnnotation):
+        #     raise TypeError("Expected an instance of FunctionAnnotation")
+        # return True
+        pass
+
+    def merge_annotation(self, other: "FunctionAnnotation"):
+        merged_annotation = FunctionAnnotation()
+        merged_annotation.function_seq = copy(self.function_seq) #@wei
+        return merged_annotation
+
+
+class WSFunctionAnnotation(MergeableStateAnnotation):
+    """Dependency Annotation for World state
+
+    This  world state annotation maintains a stack of state annotations.
+    It is used to transfer individual state annotations from one transaction to the next.
+    """
+
+    def __init__(self):
+        self.annotations_stack: List[FunctionAnnotation] = []
+
+    def __copy__(self):
+        result = WSFunctionAnnotation()
+        result.annotations_stack = copy(self.annotations_stack)
+        return result
+
+    def check_merge_annotation(self, annotation: "WSFunctionAnnotation") -> bool:
+        if len(self.annotations_stack) != len(annotation.annotations_stack):
+            # We can only merge worldstate annotations that have seen an equal amount of transactions
+            # since the beginning of symbolic execution
+            return False
+        for a1, a2 in zip(self.annotations_stack, annotation.annotations_stack):
+            if a1 == a2:
+                continue
+            if (
+                isinstance(a1, MergeableStateAnnotation)
+                and isinstance(a2, MergeableStateAnnotation)
+                and a1.check_merge_annotation(a2) is True
+            ):
+                continue
+            log.debug("Aborting merge between annotations {} and {}".format(a1, a2))
+            return False
+        return True
+
+    def merge_annotation(
+        self, annotation: "WSFunctionAnnotation"
+    ) -> "WSFunctionAnnotation":
+        merged_annotation = WSFunctionAnnotation()
+        for a1, a2 in zip(self.annotations_stack, annotation.annotations_stack):
+            if a1 == a2:
+                merged_annotation.annotations_stack.append(copy(a1))
+            merged_annotation.annotations_stack.append(a1.merge_annotation(a2))
+        return merged_annotation
+
+
+

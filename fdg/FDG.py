@@ -38,7 +38,7 @@ class FDG():
             self.index_to_label[idx]=item
             self.label_to_index[item]=idx
 
-        self.num_ftn=len(self.ftn_to_index)
+
         self.num_ftn=len(list(functions_dict.keys()))
         self.num_label=len(self.label_to_index)
 
@@ -117,6 +117,8 @@ class FDG():
         self.original_matrix_fdg=copy(self.matrix_fdg)
 
 
+
+
     def is_contained(self,A,B):
         """
         if B contains A, return True, else return False
@@ -156,14 +158,7 @@ class FDG():
     def update(self,depth,row,column,value):
         self.matrix_fdg[depth,row,column]=value
 
-    def next_ftn_names(self,depth,ftn_name):
-        ftn_names=[]
-        d3=self.ftn_to_index[ftn_name]
-        ftn_fdg=self.matrix_fdg[depth,:,d3]
-        ftn_idx= np.where(ftn_fdg>=0)[0]
-        for idx in ftn_idx:
-            ftn_names.append(self.index_to_ftn[idx])
-        return ftn_names
+
 
     def next_ftn_indices(self, depth, ftn_name):
         ftn_names = []

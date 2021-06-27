@@ -1,3 +1,4 @@
+import fdg
 from mythril.laser.ethereum.svm import LaserEVM
 from mythril.laser.plugin.interface import LaserPlugin
 from mythril.laser.plugin.builder import PluginBuilder
@@ -5,6 +6,7 @@ from mythril.laser.plugin.signals import PluginSkipState
 from mythril.laser.plugin.plugins.plugin_annotations import (
     DependencyAnnotation,
     WSDependencyAnnotation,
+    FunctionAnnotation,
 )
 from mythril.laser.ethereum.state.global_state import GlobalState
 from mythril.laser.ethereum.transaction.transaction_models import (
@@ -99,6 +101,7 @@ class DependencyPruner(LaserPlugin):
         self.sloads_on_path = {}  # type: Dict[int, List[object]]
         self.sstores_on_path = {}  # type: Dict[int, List[object]]
         self.storage_accessed_global = set()  # type: Set
+
 
     def update_sloads(self, path: List[int], target_location: object) -> None:
         """Update the dependency map for the block offsets on the given path.
@@ -205,8 +208,13 @@ class DependencyPruner(LaserPlugin):
         def start_sym_trans_hook():
             self.iteration += 1
 
+
+
+
+
         @symbolic_vm.post_hook("JUMP")
         def jump_hook(state: GlobalState):
+
             try:
                 address = state.get_current_instruction()["address"]
             except IndexError:
@@ -218,6 +226,7 @@ class DependencyPruner(LaserPlugin):
 
         @symbolic_vm.post_hook("JUMPI")
         def jumpi_hook(state: GlobalState):
+
             try:
                 address = state.get_current_instruction()["address"]
             except IndexError:
@@ -226,6 +235,8 @@ class DependencyPruner(LaserPlugin):
             annotation.path.append(address)
 
             _check_basic_block(address, annotation)
+
+
 
         @symbolic_vm.pre_hook("SSTORE")
         def sstore_hook(state: GlobalState):
@@ -268,8 +279,10 @@ class DependencyPruner(LaserPlugin):
         def stop_hook(state: GlobalState):
             _transaction_end(state)
 
+
         @symbolic_vm.pre_hook("RETURN")
         def return_hook(state: GlobalState):
+
             _transaction_end(state)
 
         def _transaction_end(state: GlobalState) -> None:
@@ -279,8 +292,7 @@ class DependencyPruner(LaserPlugin):
             :param state:
             """
 
-            annotation = get_dependency_annotation(state)
-
+            annotation=get_dependency_annotation(state)
             for index in annotation.storage_loaded:
                 self.update_sloads(annotation.path, index)
 
@@ -289,6 +301,8 @@ class DependencyPruner(LaserPlugin):
 
             if annotation.has_call:
                 self.update_calls(annotation.path)
+            #@wei add function name in annotation
+            annotation.ftn_seq.append(state.environment.active_function_name)
 
         def _check_basic_block(address: int, annotation: DependencyAnnotation):
             """This method is where the actual pruning happens.
@@ -299,6 +313,10 @@ class DependencyPruner(LaserPlugin):
 
             # Don't skip any blocks in the contract creation transaction
             if self.iteration < 2:
+                return
+
+            #@wei for sequence execution, ignore dependency pruner(critical)
+            if self.iteration>fdg.FDG_global.depth_all_ftns_reached+1:
                 return
 
             # Don't skip newly discovered blocks

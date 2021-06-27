@@ -442,7 +442,8 @@ def create_analyzer_parser(analyzer_parser: ArgumentParser):
     options.add_argument(
         "--solver-timeout",
         type=int,
-        default=10000,
+        #default=10000,
+        default=30000,
         help="The maximum amount of time(in milli seconds) the solver spends for queries from analysis modules",
     )
     options.add_argument(
