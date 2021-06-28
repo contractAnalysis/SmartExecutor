@@ -296,7 +296,10 @@ class FDG_pruner(LaserPlugin):
                             for ftn_idx in values:
                                 ftn_name = self.FDG.index_to_ftn[ftn_idx]
                                 ftn_4byte = self.FDG.ftn_to_selector[ftn_name]
-                                pc_values.append(self.ftn_pc[ftn_4byte])
+                                if ftn_4byte in self.ftn_pc:
+                                    pc_values.append(self.ftn_pc[ftn_4byte])
+                                else:
+                                    print(f'function {ftn_name} can not be found in {self.contract}')
                             pc_values.sort()
                             self.ftn_wr_ftns_pc[key] = pc_values
 
@@ -398,6 +401,9 @@ class FDG_pruner(LaserPlugin):
                 pc_here = state.mstate.pc
                 if pc_here < self.ftn_target['pc_interval_start']: return
                 if pc_here > self.ftn_target['mismatch']: return
+
+
+
 
 
                 annotations = get_dependency_annotation(state)

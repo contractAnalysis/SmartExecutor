@@ -294,6 +294,8 @@ if __name__=='__main__':
     ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/example_contracts/InvoiceCreator.sol', 'InvoiceCreator')
     function_list = [1,2]
 
+
+
     functionsDict = ftn_info.functions_dict_slither()
     # # visualize FDG based on function info
     # nodes,edges=get_nodes_edges(functionsDict)

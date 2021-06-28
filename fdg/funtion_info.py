@@ -21,9 +21,10 @@ class Function_info():
         contract = slither.get_contract_from_name(self.contract_name)
         assert contract
 
-        constructors_list = []
-        for item in contract.constructors:
-            constructors_list.append(item.name)
+        # constructors_list = []
+        # for item in contract.constructors:
+        #     constructors_list.append(item.name)
+
 
         function_dict = {}
 
@@ -31,10 +32,16 @@ class Function_info():
         for f in contract.functions:
             if f.name.__eq__('slitherConstructorVariables'): continue
             if f.name.__eq__('slitherConstructorConstantVariables'): continue
-            # if f.name in constructors_list:
-            #     print(f'{f.name} belongs to part of constructor!')
-            #     continue
+
             if f.is_constructor: continue
+
+            # only consider public, external functions
+            summary=f.get_summary()
+            if len(summary)>=3:
+                if summary[2] not in ['public','external']:
+                    continue
+
+
 
             func_hash = self.get_function_id(f.full_name)
 
@@ -103,10 +110,12 @@ class Function_info():
 
 if __name__=='__main__':
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/wei_test.sol', 'wei_test')
-    # ftn_info=Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken')
+    #ftn_info=Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken')
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/wei_test.sol', 'wei_test')
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/play_me_quiz.sol', 'play_me_quiz')
-    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/example_contracts/ZetTokenMint.sol', 'ZetTokenMint')
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/example_contracts/ZetTokenMint.sol', 'ZetTokenMint')
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/example_contracts/AaronTestCoin.sol', 'AaronTestCoin')
+    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/example_contracts/DxLockEth4Rep.sol', 'Avatar')
 
     ftn_dict= ftn_info.functions_dict_slither()
     print("===== ftn_dict ====")
