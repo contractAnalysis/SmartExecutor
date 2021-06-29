@@ -353,6 +353,7 @@ class FDG_pruner(LaserPlugin):
             and self._iteration_ >= 2:
                 # only consider DUP1 within a specified range
                 pc_here = state.mstate.pc
+                # if pc_here < self.ftn_pc['ffffffff']: return
                 if pc_here < self.ftn_target['pc_interval_start']: return
                 if pc_here > self.ftn_target['mismatch']: return
 
@@ -399,6 +400,7 @@ class FDG_pruner(LaserPlugin):
         def jumpi_hook(state: GlobalState):
             if self._depth_>=2 and state.environment.active_function_name=='fallback':
                 pc_here = state.mstate.pc
+                # if pc_here < self.ftn_pc['ffffffff']: return
                 if pc_here < self.ftn_target['pc_interval_start']: return
                 if pc_here > self.ftn_target['mismatch']: return
 
@@ -486,6 +488,20 @@ class FDG_pruner(LaserPlugin):
 
         @symbolic_vm.pre_hook("CALLDATASIZE")
         def calldatasize_hook(state: GlobalState):
+            # '''
+            # save the PC used when the function selector is not matched
+            # this PC leads to the block with revert as the final opcode
+            # :param state:
+            # :return:
+            # '''
+            # # get the pc of jumpdest, the start opcode of a block meaning the end of function mapping
+            # if state.environment.active_function_name == 'fallback':
+            #     if self._depth_==1:
+            #         self.ftn_target['pc_interval_start']=state.mstate.pc
+            pass
+
+        @symbolic_vm.pre_hook("CALLDATALOAD")
+        def calldataload_hook(state: GlobalState):
             '''
             save the PC used when the function selector is not matched
             this PC leads to the block with revert as the final opcode
