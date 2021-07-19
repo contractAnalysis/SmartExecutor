@@ -40,7 +40,7 @@ class Function_info():
             if len(summary)>=3:
                 if summary[2] not in ['public','external']:
                     continue
-
+            if f.full_name.__eq__('fallback()'):continue
 
 
             func_hash = self.get_function_id(f.full_name)
@@ -106,7 +106,24 @@ class Function_info():
     #     s = sha3.keccak_256()
     #     s.update(sig.encode("utf-8"))
     #     return s.hexdigest()[:8]
-
+#
+# def get_valid_pc_interval(gt_pc_list:list,max_pc_value:int):
+#     gt_pc_list.sort()
+#     pairs = []
+#     step = 5
+#
+#     for i in range(1, len(gt_pc_list)):
+#         if gt_pc_list[i] == gt_pc_list[i - 1] + step:
+#             continue
+#         else:
+#             pairs.append((gt_pc_list[i - 1], gt_pc_list[i]))
+#     pairs.append((gt_pc_list[-1], max_pc_value))
+#     return pairs
+# def pc_is_valid(pc:int,valid_pc_intervals:list):
+#     for item in valid_pc_intervals:
+#         if pc >item[0] and pc<item[1]:
+#             return True
+#     return False
 
 if __name__=='__main__':
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/wei_test.sol', 'wei_test')
@@ -122,4 +139,13 @@ if __name__=='__main__':
     for key, value in ftn_dict.items():
         print("\t{}:  {}".format(key, value))
     pass
+
+
+
+    # a=[24, 29, 189, 34, 118, 194, 265, 39]
+    # pairs=get_valid_pc_interval(a,1000)
+    # if pc_is_valid(90,pairs):
+    #     print(f'90 is in {pairs}')
+
+
 

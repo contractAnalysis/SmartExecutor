@@ -234,50 +234,13 @@ def get_nodes_edges_from_fdg(fdg:FDG):
             elif sv_index>=0:
                 edge_dict['f'+str(col)+",f"+str(row)]=fdg.index_to_label[sv_index]
             else:
-                edge_dict['f'+str(col)+",f"+str(row)]='does not exist'
+                # edge_dict['f'+str(col)+",f"+str(row)]='does not exist'
+                pass
 
 
     return nodes,edge_dict
 
 
-
-# get edges
-# for each function, check each of the state variables writen by it to see which functions read it.
-# then, directed edges are created between the function and those functions.
-def get_nodes_edges(dict):
-    """
-    # key: node pair, eg. f0,f1 (node name must be in format: f\d. eg., f0,f1,...,fn)
-    # value: edge lable( state variable)the value of value of the dict must be an three-element array, and the last two elements are also arrays.
-    :param dict:
-        key: node name
-        value: [ftn name, [ftn_list_write],[ftn_list_read]
-    :return:
-    """
-
-    nodes_list=[]
-    for key in dict.keys():
-        nodes_list.append(key)
-
-    edges_dict = {}
-    # for each node ( or function)
-    for i in range(len(dict)):
-        # handle the case when the function does not read state variables
-        sv_read=dict.get('f' + str(i))[1]
-
-        if (len(sv_read)==0 and i!=0): # means no function writes a state variable that this function reads. ignore the case of constructor(f0)
-            edges_dict['f0,f' + str(i)] = 'none'
-
-
-        # handle ftn_list_read:
-        sv_writen = dict.get('f' + str(i))[2]
-        if len(sv_writen) > 0:
-            for sv in sv_writen:
-                for j in range(len(dict)):
-                    if j != i:
-
-                        if sv in dict.get('f' + str(j))[1]:
-                            edges_dict['f' + str(i) + ',f' + str(j)] = sv
-    return nodes_list,edges_dict
 
 
 
@@ -286,15 +249,32 @@ if __name__=='__main__':
     colors = ['orange','green','purple','brown','pink','gray','olive','cyan','navy','blueviolet','purple','magenta','crimson']
 
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken')
+    #
     # function_list = [1, 5, 7, 6, 10]
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/Crowdsale.sol', 'Crowdsale')
+    # function_list = [1,2,3]
+
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/play_me_quiz.sol', 'play_me_quiz')
     # function_list = [1]
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/example_contracts/ZetTokenMint.sol', 'ZetTokenMint')
     # function_list = [1,2,4,6]
-    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/example_contracts/InvoiceCreator.sol', 'InvoiceCreator')
-    function_list = [1,2]
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/example_contracts/InvoiceCreator.sol', 'InvoiceCreator')
+    # function_list = [1,2]
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/CoolDex.sol', 'CoolDex')
+    # function_list = [9,3]
 
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Allocation.sol', 'Allocation')
+    # function_list = [1,2,3,5,9,10,11,12]
+    #
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/ANASH.sol', 'ANASH')
+    # function_list = [1,2,3,4,6]
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Expiry.sol', 'SoloMargin')
+    # function_list = [8,9,11,20,22,23]
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/HUBRISSTAKING.sol', 'HUBRISSTAKING')
+    # function_list = [1,3]
 
+    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/play_me_quiz.sol', 'play_me_quiz')
+    function_list = [1]
 
     functionsDict = ftn_info.functions_dict_slither()
     # # visualize FDG based on function info
@@ -316,8 +296,10 @@ if __name__=='__main__':
     print(f'nodes={nodes_}')
     print(f'number of edges:{len(edges_)}')
     print(f'edges={edges_}')
-
+    print(f'depth all functions reached:{fdg.depth_all_ftns_reached}')
+    print(f'depth edges reached:{fdg.depth_all_edges_reached}')
     draw_FDG_w_edge_label(nodes_, edges_,colors)
+
 
 
 

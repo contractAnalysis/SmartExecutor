@@ -33,27 +33,29 @@ class Sequence():
         from lead nodes to contructor
         :return:
         """
-        graph_backward={}
+        graph_bk={}
         if new_fdg:
             fdg_3d_array=self.fdg.fdg_3d_array_new
-        else:
-            fdg_3d_array=self.fdg.fdg_3d_array
+        else:fdg_3d_array=self.fdg.fdg_3d_array
 
         # graph_backward_parent_label={}
         for i in range(fdg_3d_array.shape[0]-1,-1,-1):
             ftn_reached=self.fdg.ftn_reached_at_a_depth(i,new_fdg)
-            for ftn_from in ftn_reached:
-                ftn_parents_all=fdg_3d_array[i,ftn_from,:]
-                ftn_parents=np.where(ftn_parents_all>=0)[0]
-
-                if ftn_from not in graph_backward.keys():
-                    graph_backward[ftn_from]=list(ftn_parents)
+            for ftn_to in ftn_reached:
+                ftn_parents_all=fdg_3d_array[i,ftn_to,:]
+                ftn_parents=list(np.where(ftn_parents_all>=0)[0])
+                if len(ftn_parents)==0:continue
+                if ftn_to in ftn_parents:
+                    ftn_parents.remove(ftn_to)
+                if ftn_to not in graph_bk.keys():
+                    graph_bk[ftn_to]=ftn_parents
                 else:
-                    temp1=graph_backward.get(ftn_from)+list(ftn_parents)
-                    graph_backward[ftn_from]=list(set(temp1))
+                    graph_bk[ftn_to]+=ftn_parents
+        for key in graph_bk.keys():
+            graph_bk[key]=list(set(graph_bk[key]))
         if new_fdg:
-            self.graph_new=graph_backward
-        else: self.graph_original=graph_backward
+            self.graph_new=graph_bk
+        else:self.graph_original=graph_bk
 
     def _generate_sequences(self,ftn_idx:int)->dict:
         """
@@ -90,13 +92,14 @@ class Sequence():
 
         # get sequences from original FDG
         seq_ori=[]
-        seq_new = []
-        path=[]
-        visited = [False] * self.fdg.num_ftn
-        _get_sequences(self.graph_original,ftn_idx,visited,path,seq_ori)
+        # path=[]
+        # visited = [False] * self.fdg.num_ftn
+        # _get_sequences(self.graph_original,ftn_idx,visited,path,seq_ori)
 
+        seq_new = []
         # get sequences from new FDG (some functions may not appear in FDG)
         if ftn_idx in self.graph_new:
+            seq_new = []
             path=[]
             visited = [False] * self.fdg.num_ftn
             _get_sequences(self.graph_new, ftn_idx, visited, path, seq_new)
@@ -115,10 +118,8 @@ class Sequence():
                     min_size=min(ele_size)
                     shortest_seq=[item for item in value if len(item)==min_size]
                     seqs[key]={'sequences':shortest_seq, 'depth':min_size-1}
-
                 else:
                     seqs[key]={'sequences':[], 'depth':0}
-
             ftn_shortest_seq_dict[ftn_idx]=seqs
         return ftn_shortest_seq_dict
 
@@ -141,10 +142,10 @@ class Sequence():
                         ele_size = [len(item) for item in value]
                         min_size = min(ele_size)
                         shortest_seq = [item for item in value if len(item) == min_size]
-                        seqs[key] = {'sequences': value, 'seq_size':len(value),'shortest':shortest_seq[0],'shortest_depth':min_size-1}
+                        seqs[key] = {'sequences': value, 'seq_num':len(value),'shortest':shortest_seq[0],'shortest_depth':min_size-1}
 
                     else:
-                        seqs[key] = {'sequences': [], 'seq_size':0, 'shortest':[],'shortest_depth':0}
+                        seqs[key] = {'sequences': [], 'seq_num':0, 'shortest':[],'shortest_depth':0}
 
             ftn_seq_dict[ftn_idx] = seqs
         return ftn_seq_dict
@@ -202,230 +203,230 @@ class Sequence():
 
         return com_re
 
-    def generate_target_sequences(self):
-        seq_dict={}
-        # get shortest sequences for all functions except constructor
-        self._generate_backward_graph(True)  # build graph based on new fdg
-        self._generate_backward_graph(False)  # build graph based on original fdg
-        ftn_shortest_sequence_dict=self._get_shortest_sequences()
-        print(f'shortest sequences:\n{ftn_shortest_sequence_dict}')
-        for ftn_idx in self.ftn_idx_not_covered:
-            l_p_dict=self._get_label_parent(ftn_idx)
-
-            parenet_groups=[value for value in l_p_dict.values()]
-            # case 1: only one parent or multiple parents connected by edges with same labels
-            if len(parenet_groups)==1:
-                for p_ftn in parenet_groups[0]:
-                    p_sequences=[]
-                    p_seq_dict=self._generate_sequences(p_ftn)
-                    # only use sequences from new fdg, unreachable parent functions will never reach child functions
-                    seqs=p_seq_dict['new']
-                    seqs.sort(key=len,reverse=True) # sort based on size of sequences in descending
-                    for seq in seqs:
-                        p_sequences.append([(len(seq)-1,p_ftn),ftn_idx])
-
-                    if ftn_idx not in seq_dict.keys():
-                        seq_dict[ftn_idx]=p_sequences
-                    else:
-                        seq_dict[ftn_idx]+=p_sequences
-            # case 2: multiple parents connected by edges with different labels
-            else:
-                # get sequences from single parent
-                # consider the special case that target function can be reached by one parent directly
-                parents=[]
-                for values in l_p_dict.values():
-                    parents+=values
-                parents=list(set(parents))
-                for p_idx in parents:
-                    if ftn_shortest_sequence_dict[p_idx]['new']['depth']==self.fdg.depth_all_ftns_reached:
-
-                        if ftn_idx not in seq_dict.keys():
-                            seq_dict[ftn_idx]=[[(ftn_shortest_sequence_dict[p_idx]['new']['depth'],p_idx),ftn_idx]]
-                        else:
-                            seq_dict[ftn_idx]+=[[(ftn_shortest_sequence_dict[p_idx]['new']['depth'],p_idx),ftn_idx]]
-
-
-                # get sequences through parent combination
-                parent_combinations=self._get_combination(parenet_groups)
-                collection_seq=[] # save the sequences generated
-
-                for comb in parent_combinations:
-                    # order elements in comb. sequences from new fdg with higher length has higher priority
-                    comb_priority=[ftn_shortest_sequence_dict[ele]['new']['depth'] for ele in comb]
-
-                    # if comb_priority==[0]*len(comb): continue
-                    if 0 in comb_priority:continue  # if there is one sequence not reachable,ignore the combination
-                    temp=np.array([comb,comb_priority]).T
-                    temp=temp[temp[:,1].argsort()][::-1]
-                    order_comb=temp[:,0]
-                    order_comb_priority=temp[:,1]
-
-                    # replace ele in order_comb with its shortest sequence
-                    sequences=[]
-                    for i in range(1,len(order_comb)):
-                        if ftn_shortest_sequence_dict[order_comb[i]]['new']['sequences']:
-                            p_seq=ftn_shortest_sequence_dict[order_comb[i]]['new']['sequences'][0]
-                        else:
-                            p_seq = ftn_shortest_sequence_dict[order_comb[i]]['original']['sequences'][0]
-                        p_seq=p_seq[0:-1] # remove 0 from the sequence (the last element, denote constructor)
-                        p_seq.reverse()
-                        sequences.append(p_seq)
-
-                    # merging sequence
-                    if len(sequences)>=2:
-                        temp=sequences[0]
-                        for i in range(1,len(sequences)):
-                            temp=merge_2_list(temp,sequences[i])
-                    else:
-                        temp=sequences[0]
-
-                    # form final sequence
-                    # the first two elements: the length of the first parent, parent index
-                    final_seq=[(order_comb_priority[0],order_comb[0])]
-
-                    # print(f'final_seq={final_seq}')
-                    final_seq+=temp
-                    final_seq.append(ftn_idx)
-
-                    # print(f'final_seq={final_seq}')
-                    # print(f'comb={comb}  size={len(comb)}')
-                    collection_seq.append(final_seq)
-                # limit the number of sequences
-                if len(collection_seq)>self.num_seq_limit:
-                    collection_seq.sort(key=len)
-                    collection_seq=collection_seq[0:self.num_seq_limit]
-                if ftn_idx in seq_dict.keys():
-                    seq_dict[ftn_idx] += collection_seq
-                else:
-                    seq_dict[ftn_idx]=collection_seq
-        print(f'sequences generated={seq_dict}')
-        return seq_dict
-
-    def generate_target_sequences_1(self):
-        all_sequences={}
-        # get shortest sequences for all functions except constructor
-        self._generate_backward_graph(True)  # build graph based on new fdg
-        self._generate_backward_graph(False)  # build graph based on origial fdg
-
-        for ftn_idx in self.ftn_idx_not_covered:
-            # get labels and parents
-            l_p_dict = self._get_label_parent(ftn_idx)
-            assert len(l_p_dict)>0
-
-            #------------------------------------------------
-            # case 1: consider each parent node individually
-            # -----------------------------------------------
-            parents = []
-            for values in l_p_dict.values():
-                parents += values
-            parents = list(set(parents)) # remove repeated elements
-
-            for p_idx in parents:
-                p_sequences = []
-                #get sequences for parent p_idx
-                p_seq_dict = self._generate_sequences(p_idx)
-
-                # only use sequences from new fdg,unreachable parent functions will never reach child functions
-                seqs = p_seq_dict['new']
-                # seqs.sort(key=len, reverse=True)  # sort based on sequence length in descending
-                for seq in seqs:
-                    # only consider sequences with depth=self.fdg.depth_all_ftns_reached
-                    # len of a sequence is 1 more than depth of the sequence
-                    # due to constructor included in sequence
-                    if len(seq) - 1 == self.fdg.depth_all_ftns_reached:
-                        p_sequences.append([([self.fdg.depth_all_ftns_reached], p_idx), ftn_idx])
-
-                if ftn_idx not in all_sequences.keys():
-                    all_sequences[ftn_idx] = p_sequences
-                else:
-                    all_sequences[ftn_idx] += p_sequences
-
-            # ------------------------------------------------
-            # case 2: consider combined parent nodes
-            # ------------------------------------------------
-            parenet_groups = [value for value in l_p_dict.values()]
-            if len(parenet_groups)>1:
-                # do combinations
-
-                # key-value format: target function: [[target function, other function, constructor],...]
-                ftn_seq_and_shortest_seq_dict = self._get_sequences_and_shortest_sequences()
-
-                # get sequences through parent combination
-                parent_combinations=self._get_combination(parenet_groups)
-
-                collection_seq=[] # save the sequences generated
-                for comb in parent_combinations:
-                    # order elements in comb.
-                    # sequences from new fdg with higher length has higher priority
-
-                    comb_priority_shortest_seq_len=[ftn_seq_and_shortest_seq_dict[ele]['new']['shortest_depth'] for ele in comb]
-                    comb_priority_seq_size=[ftn_seq_and_shortest_seq_dict[ele]['new']['seq_size'] for ele in comb]
-
-                    # if comb_priority==[0]*len(comb): continue
-                    # in this version, unreachable sequences are not considered
-                    if 0 in comb_priority_seq_size:continue  # if there is one sequence not reachable,ignore the combination
-                    temp=np.array([comb,comb_priority_seq_size,comb_priority_shortest_seq_len]).T
-                    # temp=temp[temp[:,1].argsort()][::-1]
-                    temp = temp[np.lexsort((temp[:, 1],temp[:,2]))][::-1]
-                    order_comb=temp[:,0]
-
-
-
-                    # replace ele in order_comb with its shortest sequence
-                    # the first ele is not replaced as it is used to find base states and already executed.
-                    sequences=[]
-                    for i in range(1,len(order_comb)):
-                        if ftn_seq_and_shortest_seq_dict[order_comb[i]]['new']['shortest']:
-                            p_seq=ftn_seq_and_shortest_seq_dict[order_comb[i]]['new']['shortest']
-
-                            # remove 0 from the sequence (the last element denotes constructor)
-                            p_seq=p_seq[0:-1]
-                            p_seq.reverse()
-                            sequences.append(p_seq)
-
-                    if len(sequences)==0:
-                        continue
-                    # merging sequence
-                    if len(sequences)>=2:
-                        temp=sequences[0]
-                        for i in range(1,len(sequences)):
-                            temp=merge_2_list(temp,sequences[i])
-                    else:
-                        temp=sequences[0]
-
-
-                    # form final sequence: first tuple+ rest sequence+ target function
-                    # handle the first ele in comb
-                    seq_1st_ele=ftn_seq_and_shortest_seq_dict[order_comb[0]]['new']['sequences']
-
-                    len_ary=[len(seq)-1 for seq in seq_1st_ele]
-                    len_ary=list(set(len_ary))
-                    len_ary.sort(reverse=True) #order in descending order
-                    len_ary=[ele for ele in len_ary if ele<=self.fdg.depth_all_ftns_reached]
-                    if len(len_ary)>=2:
-                        # format: ([depths that parent ftn can be reached],parent_ftn_idx)
-                        final_seq = [(len_ary[0:2], order_comb[0])]
-                    else:
-                        final_seq = [([len_ary[0]], order_comb[0])]
-
-
-                    # print(f'final_seq={final_seq}')
-                    final_seq+=temp
-                    final_seq.append(ftn_idx)
-
-                    collection_seq.append(final_seq)
-
-                # after going through all combinations
-                # limit the number of sequences
-                if len(collection_seq)>self.num_seq_limit:
-                    collection_seq.sort(key=len) # in ascending order
-                    collection_seq=collection_seq[0:self.num_seq_limit]
-                if ftn_idx in all_sequences.keys():
-                    all_sequences[ftn_idx] += collection_seq
-                else:
-                    all_sequences[ftn_idx]=collection_seq
-        print(f'sequences generated 1={all_sequences}')
-        return all_sequences
+    # def generate_target_sequences(self):
+    #     seq_dict={}
+    #     # get shortest sequences for all functions except constructor
+    #     self._generate_backward_graph(True)  # build graph based on new fdg
+    #     self._generate_backward_graph(False)  # build graph based on original fdg
+    #     ftn_shortest_sequence_dict=self._get_shortest_sequences()
+    #     print(f'shortest sequences:\n{ftn_shortest_sequence_dict}')
+    #     for ftn_idx in self.ftn_idx_not_covered:
+    #         l_p_dict=self._get_label_parent(ftn_idx)
+    #
+    #         parenet_groups=[value for value in l_p_dict.values()]
+    #         # case 1: only one parent or multiple parents connected by edges with same labels
+    #         if len(parenet_groups)==1:
+    #             for p_ftn in parenet_groups[0]:
+    #                 p_sequences=[]
+    #                 p_seq_dict=self._generate_sequences(p_ftn)
+    #                 # only use sequences from new fdg, unreachable parent functions will never reach child functions
+    #                 seqs=p_seq_dict['new']
+    #                 seqs.sort(key=len,reverse=True) # sort based on size of sequences in descending
+    #                 for seq in seqs:
+    #                     p_sequences.append([(len(seq)-1,p_ftn),ftn_idx])
+    #
+    #                 if ftn_idx not in seq_dict.keys():
+    #                     seq_dict[ftn_idx]=p_sequences
+    #                 else:
+    #                     seq_dict[ftn_idx]+=p_sequences
+    #         # case 2: multiple parents connected by edges with different labels
+    #         else:
+    #             # get sequences from single parent
+    #             # consider the special case that target function can be reached by one parent directly
+    #             parents=[]
+    #             for values in l_p_dict.values():
+    #                 parents+=values
+    #             parents=list(set(parents))
+    #             for p_idx in parents:
+    #                 if ftn_shortest_sequence_dict[p_idx]['new']['depth']==self.fdg.depth_all_ftns_reached:
+    #
+    #                     if ftn_idx not in seq_dict.keys():
+    #                         seq_dict[ftn_idx]=[[(ftn_shortest_sequence_dict[p_idx]['new']['depth'],p_idx),ftn_idx]]
+    #                     else:
+    #                         seq_dict[ftn_idx]+=[[(ftn_shortest_sequence_dict[p_idx]['new']['depth'],p_idx),ftn_idx]]
+    #
+    #
+    #             # get sequences through parent combination
+    #             parent_combinations=self._get_combination(parenet_groups)
+    #             collection_seq=[] # save the sequences generated
+    #
+    #             for comb in parent_combinations:
+    #                 # order elements in comb. sequences from new fdg with higher length has higher priority
+    #                 comb_priority=[ftn_shortest_sequence_dict[ele]['new']['depth'] for ele in comb]
+    #
+    #                 # if comb_priority==[0]*len(comb): continue
+    #                 if 0 in comb_priority:continue  # if there is one sequence not reachable,ignore the combination
+    #                 temp=np.array([comb,comb_priority]).T
+    #                 temp=temp[temp[:,1].argsort()][::-1]
+    #                 order_comb=temp[:,0]
+    #                 order_comb_priority=temp[:,1]
+    #
+    #                 # replace ele in order_comb with its shortest sequence
+    #                 sequences=[]
+    #                 for i in range(1,len(order_comb)):
+    #                     if ftn_shortest_sequence_dict[order_comb[i]]['new']['sequences']:
+    #                         p_seq=ftn_shortest_sequence_dict[order_comb[i]]['new']['sequences'][0]
+    #                     else:
+    #                         p_seq = ftn_shortest_sequence_dict[order_comb[i]]['original']['sequences'][0]
+    #                     p_seq=p_seq[0:-1] # remove 0 from the sequence (the last element, denote constructor)
+    #                     p_seq.reverse()
+    #                     sequences.append(p_seq)
+    #
+    #                 # merging sequence
+    #                 if len(sequences)>=2:
+    #                     temp=sequences[0]
+    #                     for i in range(1,len(sequences)):
+    #                         temp=merge_2_list(temp,sequences[i])
+    #                 else:
+    #                     temp=sequences[0]
+    #
+    #                 # form final sequence
+    #                 # the first two elements: the length of the first parent, parent index
+    #                 final_seq=[(order_comb_priority[0],order_comb[0])]
+    #
+    #                 # print(f'final_seq={final_seq}')
+    #                 final_seq+=temp
+    #                 final_seq.append(ftn_idx)
+    #
+    #                 # print(f'final_seq={final_seq}')
+    #                 # print(f'comb={comb}  size={len(comb)}')
+    #                 collection_seq.append(final_seq)
+    #             # limit the number of sequences
+    #             if len(collection_seq)>self.num_seq_limit:
+    #                 collection_seq.sort(key=len)
+    #                 collection_seq=collection_seq[0:self.num_seq_limit]
+    #             if ftn_idx in seq_dict.keys():
+    #                 seq_dict[ftn_idx] += collection_seq
+    #             else:
+    #                 seq_dict[ftn_idx]=collection_seq
+    #     print(f'sequences generated={seq_dict}')
+    #     return seq_dict
+    #
+    # def generate_target_sequences_1(self):
+    #     all_sequences={}
+    #     # get shortest sequences for all functions except constructor
+    #     self._generate_backward_graph(True)  # build graph based on new fdg
+    #     self._generate_backward_graph(False)  # build graph based on origial fdg
+    #
+    #     for ftn_idx in self.ftn_idx_not_covered:
+    #         # get labels and parents
+    #         l_p_dict = self._get_label_parent(ftn_idx)
+    #         assert len(l_p_dict)>0
+    #
+    #         #------------------------------------------------
+    #         # case 1: consider each parent node individually
+    #         # -----------------------------------------------
+    #         parents = []
+    #         for values in l_p_dict.values():
+    #             parents += values
+    #         parents = list(set(parents)) # remove repeated elements
+    #
+    #         for p_idx in parents:
+    #             p_sequences = []
+    #             #get sequences for parent p_idx
+    #             p_seq_dict = self._generate_sequences(p_idx)
+    #
+    #             # only use sequences from new fdg,unreachable parent functions will never reach child functions
+    #             seqs = p_seq_dict['new']
+    #             # seqs.sort(key=len, reverse=True)  # sort based on sequence length in descending
+    #             for seq in seqs:
+    #                 # only consider sequences with depth=self.fdg.depth_all_ftns_reached
+    #                 # len of a sequence is 1 more than depth of the sequence
+    #                 # due to constructor included in sequence
+    #                 if len(seq) - 1 == self.fdg.depth_all_ftns_reached:
+    #                     p_sequences.append([([self.fdg.depth_all_ftns_reached], p_idx), ftn_idx])
+    #
+    #             if ftn_idx not in all_sequences.keys():
+    #                 all_sequences[ftn_idx] = p_sequences
+    #             else:
+    #                 all_sequences[ftn_idx] += p_sequences
+    #
+    #         # ------------------------------------------------
+    #         # case 2: consider combined parent nodes
+    #         # ------------------------------------------------
+    #         parenet_groups = [value for value in l_p_dict.values()]
+    #         if len(parenet_groups)>1:
+    #             # do combinations
+    #
+    #             # key-value format: target function: [[target function, other function, constructor],...]
+    #             ftn_seq_and_shortest_seq_dict = self._get_sequences_and_shortest_sequences()
+    #
+    #             # get sequences through parent combination
+    #             parent_combinations=self._get_combination(parenet_groups)
+    #
+    #             collection_seq=[] # save the sequences generated
+    #             for comb in parent_combinations:
+    #                 # order elements in comb.
+    #                 # sequences from new fdg with higher length has higher priority
+    #
+    #                 comb_priority_shortest_seq_len=[ftn_seq_and_shortest_seq_dict[ele]['new']['shortest_depth'] for ele in comb]
+    #                 comb_priority_seq_size=[ftn_seq_and_shortest_seq_dict[ele]['new']['seq_num'] for ele in comb]
+    #
+    #                 # if comb_priority==[0]*len(comb): continue
+    #                 # in this version, unreachable sequences are not considered
+    #                 if 0 in comb_priority_seq_size:continue  # if there is one sequence not reachable,ignore the combination
+    #                 temp=np.array([comb,comb_priority_seq_size,comb_priority_shortest_seq_len]).T
+    #                 # temp=temp[temp[:,1].argsort()][::-1]
+    #                 temp = temp[np.lexsort((temp[:, 1],temp[:,2]))][::-1]
+    #                 order_comb=temp[:,0]
+    #
+    #
+    #
+    #                 # replace ele in order_comb with its shortest sequence
+    #                 # the first ele is not replaced as it is used to find base states and already executed.
+    #                 sequences=[]
+    #                 for i in range(1,len(order_comb)):
+    #                     if ftn_seq_and_shortest_seq_dict[order_comb[i]]['new']['shortest']:
+    #                         p_seq=ftn_seq_and_shortest_seq_dict[order_comb[i]]['new']['shortest']
+    #
+    #                         # remove 0 from the sequence (the last element denotes constructor)
+    #                         p_seq=p_seq[0:-1]
+    #                         p_seq.reverse()
+    #                         sequences.append(p_seq)
+    #
+    #                 if len(sequences)==0:
+    #                     continue
+    #                 # merging sequence
+    #                 if len(sequences)>=2:
+    #                     temp=sequences[0]
+    #                     for i in range(1,len(sequences)):
+    #                         temp=merge_2_list(temp,sequences[i])
+    #                 else:
+    #                     temp=sequences[0]
+    #
+    #
+    #                 # form final sequence: first tuple+ rest sequence+ target function
+    #                 # handle the first ele in comb
+    #                 seq_1st_ele=ftn_seq_and_shortest_seq_dict[order_comb[0]]['new']['sequences']
+    #
+    #                 len_ary=[len(seq)-1 for seq in seq_1st_ele]
+    #                 len_ary=list(set(len_ary))
+    #                 len_ary.sort(reverse=True) #order in descending order
+    #                 len_ary=[ele for ele in len_ary if ele<=self.fdg.depth_all_ftns_reached]
+    #                 if len(len_ary)>=2:
+    #                     # format: ([depths that parent ftn can be reached],parent_ftn_idx)
+    #                     final_seq = [(len_ary[0:2], order_comb[0])]
+    #                 else:
+    #                     final_seq = [([len_ary[0]], order_comb[0])]
+    #
+    #
+    #                 # print(f'final_seq={final_seq}')
+    #                 final_seq+=temp
+    #                 final_seq.append(ftn_idx)
+    #
+    #                 collection_seq.append(final_seq)
+    #
+    #             # after going through all combinations
+    #             # limit the number of sequences
+    #             if len(collection_seq)>self.num_seq_limit:
+    #                 collection_seq.sort(key=len) # in ascending order
+    #                 collection_seq=collection_seq[0:self.num_seq_limit]
+    #             if ftn_idx in all_sequences.keys():
+    #                 all_sequences[ftn_idx] += collection_seq
+    #             else:
+    #                 all_sequences[ftn_idx]=collection_seq
+    #     print(f'sequences generated 1={all_sequences}')
+    #     return all_sequences
 
 
 
@@ -503,22 +504,20 @@ class Sequence():
                 for p_idx in parents:
                     p_sequences = []
                     # get sequences for parent p_idx
-                    p_seq_dict = self._generate_sequences(p_idx)
+                    # p_seq_dict = self._generate_sequences(p_idx)
+                    p_seq_dict=self.ftn_seq_and_shortest_seq_dict[p_idx]
 
                     # only use sequences from new fdg,unreachable parent functions will never reach child functions
-                    seqs = p_seq_dict['new']
-                    # seqs.sort(key=len, reverse=True)  # sort based on sequence length in descending
-                    for seq in seqs:
-                        # only consider sequences with depth=self.fdg.depth_all_ftns_reached
-                        # len of a sequence is 1 more than depth of the sequence
-                        # due to constructor included in sequence
-                        if len(seq) - 1 == self.fdg.depth_all_ftns_reached:
-                            p_sequences.append([([self.fdg.depth_all_ftns_reached], p_idx), ftn_idx])
+                    # seqs = p_seq_dict['new']
+                    seqs=p_seq_dict['new']['sequences']
+                    target_seqs=[seq for seq in seqs if len(seq)==self.fdg.depth_all_ftns_reached+1]
+                    if len(target_seqs)>0:
+                        if ftn_idx not in all_sequences.keys():
+                            all_sequences[ftn_idx]=[[([self.fdg.depth_all_ftns_reached],p_idx),ftn_idx] ]
+                        else:
+                            all_sequences[ftn_idx] += [[([self.fdg.depth_all_ftns_reached], p_idx), ftn_idx]]
 
-                    if ftn_idx not in all_sequences.keys():
-                        all_sequences[ftn_idx] = p_sequences
-                    else:
-                        all_sequences[ftn_idx] += p_sequences
+            return all_sequences
 
         else:
             # ------------------------------------------------
@@ -589,7 +588,7 @@ class Sequence():
                     else:
                         all_sequences[ftn_idx] = collection_seq
 
-        return all_sequences
+            return all_sequences
 
     def organize_sequences_for_execution_by_level(self,sequences_dict,level:int):
 
@@ -629,6 +628,121 @@ class Sequence():
                                     if ftn not in info_following_step[i][pre_ftn]:
                                         info_following_step[i][pre_ftn] += [ftn]
         return info_1st_step, info_following_step
+
+    def get_sequences_by_level_seqExe_1by1(self,level:int):
+        """
+
+        :param level: number of parent groups considered
+        :return:
+        """
+        assert self.ftn_seq_and_shortest_seq_dict
+        all_sequences={}
+        if level<1: return  all_sequences
+        if level==1:
+            # ------------------------------------------------
+            # levl 1: consider only one parent node
+            # -----------------------------------------------
+            for ftn_idx in self.ftn_idx_not_covered:
+                # get labels and parents
+                l_p_dict = self._get_label_parent(ftn_idx)
+                if len(l_p_dict) == 0: continue
+
+                parents = []
+                for values in l_p_dict.values():
+                    parents += values
+                parents = list(set(parents))  # remove repeated elements
+
+                for p_idx in parents:
+                    p_sequences = []
+                    # get sequences for parent p_idx
+                    p_seq_dict = self._generate_sequences(p_idx)
+
+                    # only use sequences from new fdg,unreachable parent functions will never reach child functions
+                    seqs = p_seq_dict['new']
+                    # seqs.sort(key=len, reverse=True)  # sort based on sequence length in descending
+                    for seq in seqs:
+                        # only consider sequences with depth=self.fdg.depth_all_ftns_reached
+                        # len of a sequence is 1 more than depth of the sequence
+                        # due to constructor included in sequence
+                        if len(seq) - 1 == self.fdg.depth_all_ftns_reached:
+                            p_sequences.append([([self.fdg.depth_all_ftns_reached], p_idx,ftn_idx)])
+
+                    if ftn_idx not in all_sequences.keys():
+                        all_sequences[ftn_idx] = p_sequences
+                    else:
+                        all_sequences[ftn_idx] += p_sequences
+
+        else:
+            # ------------------------------------------------
+            # level 2 and higher : consider combined parent nodes
+            # ------------------------------------------------
+            for ftn_idx in self.ftn_idx_not_covered:
+                # get labels and parents
+                l_p_dict = self._get_label_parent(ftn_idx)
+                if len(l_p_dict) == 0: continue
+
+                parent_groups = [values for values in l_p_dict.values()]
+                if len(parent_groups)>=level:
+                    # get sequences through parent combination
+                    parent_combinations = self._get_combination(parent_groups, level)
+
+                    collection_seq = []  # save the sequences generated
+                    for comb in parent_combinations:
+                        # order elements in comb.
+                        # sequences from new fdg with higher length has higher priority
+
+                        comb_priority_shortest_seq_len = [
+                            self.ftn_seq_and_shortest_seq_dict[ele]['new']['shortest_depth'] for ele in comb]
+
+                        # in this version, unreachable sequences are not considered
+                        if 0 in comb_priority_shortest_seq_len: continue  # if there is one sequence not reachable,ignore the combination
+                        temp = np.array([comb, comb_priority_shortest_seq_len]).T
+                        # temp=temp[temp[:,1].argsort()][::-1]
+                        temp = temp[temp[:, 1].argsort()][::-1]
+                        # temp = temp[np.lexsort((temp[:, 1]))][::-1]
+                        order_comb = temp[:, 0]
+
+                        # replace elements in order_comb with its shortest sequence
+                        sequence=[]
+                        for ele in order_comb:
+                            seq=self.ftn_seq_and_shortest_seq_dict[ele]['new']['shortest'][0:-1]
+                            seq.reverse()
+                            sequence.append(seq)
+
+                        p_first = sequence[0]
+                        p_first_length = len(sequence[0])
+                        merge_seq = []
+                        if len(sequence) == 2:
+                            merge_seq = merge_fix_list_1(sequence[0], sequence[1])
+                        elif len(sequence) > 2:
+                            if p_first_length == 1:
+                                for i in range(2, len(sequence)):
+                                    merge_seq = merge_2_list(merge_seq, sequence[i])
+                            else:
+                                for i in range(2, len(sequence)):
+                                    merge_seq = merge_fix_list_1_specified_lenth(merge_seq, sequence[i],
+                                                                                 p_first_length)
+
+                        # form final sequence
+                        final_seq_2nd_part = merge_seq[p_first_length:]  # remove the elements from the first parent
+                        final_seq_2nd_part.append(ftn_idx)
+                        final_seq = [([p_first_length], order_comb[0],final_seq_2nd_part[0])]+ final_seq_2nd_part[1:]
+
+                        collection_seq.append(final_seq)
+
+                    # after going through all combinations
+                    # limit the number of sequences
+                    if len(collection_seq) > self.num_seq_limit:
+                        collection_seq.sort(key=len)  # in ascending order
+                        collection_seq = collection_seq[0:self.num_seq_limit]
+
+                    if ftn_idx in all_sequences.keys():
+                        all_sequences[ftn_idx] += collection_seq
+                    else:
+                        all_sequences[ftn_idx] = collection_seq
+
+        return all_sequences
+
 
 
 # merge two lists, common elements are considered once
@@ -770,6 +884,8 @@ if __name__=='__main__':
     # seq= Sequence()
     # re=seq._get_combination([[1,4], [2,6],[5]],2)
     # print(re)
+
+
 
     seq= Sequence()
     a=[1,2,5,7]

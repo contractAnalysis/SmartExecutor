@@ -218,8 +218,8 @@ class LaserEVM:
         if self.fdg_flag:
             i = 0
             while i <fdg.FDG_global.transaction_count:  #@wei rewrite loop
-                if len(self.open_states) == 0:
-                    break
+                # if len(self.open_states) == 0:
+                #     break
                 old_states_count = len(self.open_states)
                 self.open_states = [
                     state for state in self.open_states if state.constraints.is_possible
