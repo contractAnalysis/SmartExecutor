@@ -142,15 +142,19 @@ class FDG_pruner(LaserPlugin):
                     if len(child_nodes)==0:
                         prt_no_child.append(ftn_idx)
                         if self._depth_ == 2:  # only do this at depth 2
-                            if len(self.ftn_wo_edges_not_covered) > 0:
-                                child_nodes_pc = [self.ftn_pc[ftn_i] for ftn_i in self.ftn_wo_edges_not_covered if
-                                                  ftn_i in self.ftn_pc.keys()]
-                                self.fdg_pc[ftn_idx] = sorted(child_nodes_pc)
-                            else:
-                                pc_covered = [pc for ftn_i, pc in self.ftn_pc.items() if
-                                              self.ftn_covered_mark[ftn_i] == 1]
-                                pc_list = [pc for pc in self.all_ftn_pc_list if pc not in pc_covered]
-                                self.fdg_pc[ftn_idx] = sorted(pc_list)
+                            # if len(self.ftn_wo_edges_not_covered) > 0:
+                            #     child_nodes_pc = [self.ftn_pc[ftn_i] for ftn_i in self.ftn_wo_edges_not_covered if
+                            #                       ftn_i in self.ftn_pc.keys()]
+                            #     self.fdg_pc[ftn_idx] = sorted(child_nodes_pc)
+                            # else:
+                            #     pc_covered = [pc for ftn_i, pc in self.ftn_pc.items() if
+                            #                   self.ftn_covered_mark[ftn_i] == 1]
+                            #     pc_list = [pc for pc in self.all_ftn_pc_list if pc not in pc_covered]
+                            #     self.fdg_pc[ftn_idx] = sorted(pc_list)
+                            pc_covered = [pc for ftn_i, pc in self.ftn_pc.items() if
+                                          self.ftn_covered_mark[ftn_i] == 1]
+                            pc_list = [pc for pc in self.all_ftn_pc_list if pc not in pc_covered]
+                            self.fdg_pc[ftn_idx] = sorted(pc_list)
 
                         continue
                     if self._depth_<=fdg.FDG_global.depth_all_ftns_reached:
