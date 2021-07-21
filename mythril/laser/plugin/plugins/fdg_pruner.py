@@ -154,6 +154,8 @@ class FDG_pruner(LaserPlugin):
                             pc_covered = [pc for ftn_i, pc in self.ftn_pc.items() if
                                           self.ftn_covered_mark[ftn_i] == 1]
                             pc_list = [pc for pc in self.all_ftn_pc_list if pc not in pc_covered]
+                            if len(self.valid_pc_interval)>0:
+                                pc_list=[pc for pc in pc_list if utils.pc_is_valid(pc,self.valid_pc_interval)]
                             self.fdg_pc[ftn_idx] = sorted(pc_list)
 
                         continue
@@ -488,15 +490,46 @@ class FDG_pruner(LaserPlugin):
             # if state.environment.active_function_name == 'fallback' \
             if self._depth_ == 1:
                 # assume that self.pc_control_interval is extracted
-                assert('pc_interval_end' in self.pc_control_interval.keys())
-                assert ('pc_interval_start' in self.pc_control_interval.keys())
-                if state.mstate.pc>self.pc_control_interval['pc_interval_start'] and \
-                    state.mstate.pc < self.pc_control_interval['pc_interval_end']:
-                    ftn_selector = state.instruction['argument'][2:]
-                    if ftn_selector not in self.selector_pc.keys():
-                        self.selector_pc[ftn_selector] = state.mstate.pc
-                        if ftn_selector!='ffffffff':
-                            self.all_ftn_pc_list.append(state.mstate.pc)
+                if state.mstate.pc< self.pc_control_interval['pc_interval_start']:
+                    return
+                if 'pc_interval_end' in self.pc_control_interval.keys():
+                    if state.mstate.pc > self.pc_control_interval['pc_interval_end']:
+                        return
+                ftn_selector = state.instruction['argument'][2:]
+                if ftn_selector not in self.selector_pc.keys():
+                    self.selector_pc[ftn_selector] = state.mstate.pc
+                    if ftn_selector!='ffffffff':
+                        self.all_ftn_pc_list.append(state.mstate.pc)
+
+
+        @symbolic_vm.pre_hook("GT")
+        def gt_hook(state: GlobalState):
+            # get the pc of jumpdest, the start opcode of a block meaning the end of function mapping
+
+            if self._depth_ == 1:
+                if state.mstate.pc< self.pc_control_interval['pc_interval_start']:
+                    return
+                if 'pc_interval_end' in self.pc_control_interval.keys():
+                    if state.mstate.pc > self.pc_control_interval['pc_interval_end']:
+                        return
+
+                self.gt_pc.append(state.mstate.pc)
+
+
+        @symbolic_vm.pre_hook("CALLDATALOAD")
+        def calldataload_hook(state: GlobalState):
+            '''
+            get the start pc for the valid pc interval
+            '''
+            if self._depth_==1:
+                if 'pc_interval_start' not in self.pc_control_interval.keys():
+                    self.pc_control_interval['pc_interval_start']=state.mstate.pc
+
+        @symbolic_vm.pre_hook("CALLDATASIZE")
+        def calldatasize_hook(state: GlobalState):
+                if self._depth_ == 1:
+                    if 'pc_signal_start' not in self.pc_control_interval.keys():
+                        self.pc_control_interval['pc_signal_start'] = state.mstate.pc
 
         @symbolic_vm.pre_hook("JUMPDEST")
         def jumpdest_hook(state: GlobalState):
@@ -508,29 +541,9 @@ class FDG_pruner(LaserPlugin):
 
             # assume that the first occurance of jumpdest is the entry point for block of revert or fallback function
 
-            if self._depth_==1 and 'pc_interval_end' not in self.pc_control_interval.keys():
-                self.pc_control_interval['pc_interval_end']=state.mstate.pc
+            if self._depth_ == 1 and 'pc_signal_start' in self.pc_control_interval.keys() and 'pc_interval_end' not in self.pc_control_interval.keys():
+                self.pc_control_interval['pc_interval_end'] = state.mstate.pc
 
-        @symbolic_vm.pre_hook("GT")
-        def gt_hook(state: GlobalState):
-            # get the pc of jumpdest, the start opcode of a block meaning the end of function mapping
-            # if state.environment.active_function_name == 'fallback':
-            if self._depth_ == 1:
-                assert ('pc_interval_end' in self.pc_control_interval.keys())
-                assert ('pc_interval_start' in self.pc_control_interval.keys())
-                if state.mstate.pc > self.pc_control_interval['pc_interval_start'] and \
-                    state.mstate.pc < self.pc_control_interval['pc_interval_end']:
-                    self.gt_pc.append(state.mstate.pc)
-
-        @symbolic_vm.pre_hook("CALLDATALOAD")
-        def calldataload_hook(state: GlobalState):
-            '''
-            get the minimum pc for the valid pc interval
-            '''
-            # get the pc of jumpdest, the start opcode of a block meaning the end of function mapping
-            if state.environment.active_function_name == 'fallback':
-                if self._depth_==1:
-                    self.pc_control_interval['pc_interval_start']=state.mstate.pc
 
         @symbolic_vm.pre_hook("STOP")
         def stop_hook(state: GlobalState):
