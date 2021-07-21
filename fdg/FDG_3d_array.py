@@ -119,7 +119,7 @@ class FDG():
         :param function_list: [10,3,6]
         :return:
         """
-        assert (len(function_list) > 0)
+        # assert (len(function_list) > 0)
         edge_not_reached = copy(self.edge_list)
         ftn_mark = [False] * self.num_ftn
         ftn_mark[0] = True  # for constructor,set it true

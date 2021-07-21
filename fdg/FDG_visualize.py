@@ -273,8 +273,17 @@ if __name__=='__main__':
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/HUBRISSTAKING.sol', 'HUBRISSTAKING')
     # function_list = [1,3]
 
-    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/play_me_quiz.sol', 'play_me_quiz')
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/play_me_quiz.sol', 'play_me_quiz')
+    # function_list = [1]
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Bears.sol', 'Sale')
+    # function_list = [1]
+    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/SolidifiedMain.sol', 'SolidifiedMain')
     function_list = [1]
+    # error: slither.exceptions.SlitherException: Function not found on TMP_25(None)
+
+    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/THE_BANK.sol',
+                             'THE_BANK')
+    function_list = [1,2]
 
     functionsDict = ftn_info.functions_dict_slither()
     # # visualize FDG based on function info
@@ -333,3 +342,5 @@ if __name__=='__main__':
     # #     print(f'True')
     # # else: print('False')
     # # # draw_FDG_w_edge_label(nodes_3, edges_3,colors)
+
+

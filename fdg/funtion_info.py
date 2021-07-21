@@ -27,6 +27,7 @@ class Function_info():
 
 
         function_dict = {}
+        ftn_public=[]
 
         i = 1
         for f in contract.functions:
@@ -42,7 +43,7 @@ class Function_info():
                     continue
             if f.full_name.__eq__('fallback()'):continue
 
-
+            ftn_public.append(f.full_name)
             func_hash = self.get_function_id(f.full_name)
 
             r_list = []
@@ -64,23 +65,10 @@ class Function_info():
                 function_dict['f' + str(i)] = [f.full_name, r_list, w_list, func_hash,i]
                 i = i + 1
 
-        # # check if constructor is included or not. if not, add it
-        # constructor_write_list = []
-        # f_w = []
-        # for item in contract.constructors:
-        #     f_w += item.all_state_variables_written()
-        # if len(f_w) > 0:
-        #     constructor_write_list = [sv.name for sv in f_w]
-        #
-        # if len(contract.constructors)>0:
-        #     func_hash = self.get_function_id(contract.constructor.full_name)
-        #     function_dict['f0'] = ["constructor", [], constructor_write_list,
-        #                        func_hash,0]  # abstract constructor: a combination of specific constructors from different contracts with inheritant relationship
-        #
-        # else: # in the case of no constructor
-        #     function_dict['f0']=["constructor",[],[],"",0]
+
 
         function_dict['f0'] = ["constructor", [], [], "", 0]
+        print(f'all public functions:{ftn_public}')
         return function_dict
 
     def get_function_id(self,sig: str) ->str:
@@ -106,24 +94,7 @@ class Function_info():
     #     s = sha3.keccak_256()
     #     s.update(sig.encode("utf-8"))
     #     return s.hexdigest()[:8]
-#
-# def get_valid_pc_interval(gt_pc_list:list,max_pc_value:int):
-#     gt_pc_list.sort()
-#     pairs = []
-#     step = 5
-#
-#     for i in range(1, len(gt_pc_list)):
-#         if gt_pc_list[i] == gt_pc_list[i - 1] + step:
-#             continue
-#         else:
-#             pairs.append((gt_pc_list[i - 1], gt_pc_list[i]))
-#     pairs.append((gt_pc_list[-1], max_pc_value))
-#     return pairs
-# def pc_is_valid(pc:int,valid_pc_intervals:list):
-#     for item in valid_pc_intervals:
-#         if pc >item[0] and pc<item[1]:
-#             return True
-#     return False
+
 
 if __name__=='__main__':
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/wei_test.sol', 'wei_test')
