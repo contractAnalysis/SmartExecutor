@@ -1,7 +1,7 @@
 
 from slither.slither import Slither
+from fdg import utils
 
-import sha3
 class Function_info():
     def __init__(self,solidity_file:str, contract_name:str):
         self.solidity_file=solidity_file
@@ -27,7 +27,7 @@ class Function_info():
 
 
         function_dict = {}
-        ftn_public=[]
+
 
         i = 1
         for f in contract.functions:
@@ -43,8 +43,8 @@ class Function_info():
                     continue
             if f.full_name.__eq__('fallback()'):continue
 
-            ftn_public.append(f.full_name)
-            func_hash = self.get_function_id(f.full_name)
+
+            func_hash = utils.get_function_id(f.full_name)
 
             r_list = []
             f_r = f.all_conditional_state_variables_read()
@@ -65,35 +65,8 @@ class Function_info():
                 function_dict['f' + str(i)] = [f.full_name, r_list, w_list, func_hash,i]
                 i = i + 1
 
-
-
         function_dict['f0'] = ["constructor", [], [], "", 0]
-        print(f'all public functions:{ftn_public}')
         return function_dict
-
-    def get_function_id(self,sig: str) ->str:
-        """'
-            Return the function id of the given signature
-        Args:
-            sig (str)
-        Return:
-            (int)
-        """
-        s = sha3.keccak_256()
-        s.update(sig.encode("utf-8"))
-        return s.hexdigest()[:8]
-
-    # def get_function_id(self,sig: str) ->str:
-    #     """'
-    #         Return the function id of the given signature
-    #     Args:
-    #         sig (str)
-    #     Return:
-    #         (int)
-    #     """
-    #     s = sha3.keccak_256()
-    #     s.update(sig.encode("utf-8"))
-    #     return s.hexdigest()[:8]
 
 
 if __name__=='__main__':

@@ -1,3 +1,16 @@
+import sha3
+def get_function_id(sig: str) -> str:
+    """'
+        Return the function id of the given signature
+    Args:
+        sig (str)
+    Return:
+        (int)
+    """
+    s = sha3.keccak_256()
+    s.update(sig.encode("utf-8"))
+    return s.hexdigest()[:8]
+
 
 # get valid pc interval from a list of PCs of opcode GT
 def get_valid_pc_interval(gt_pc_list:list,max_pc_value:int):
@@ -36,16 +49,20 @@ def assign_pc_fdg_phase_dup1(current_pc: int, prt_ftn_name:str,ftn_to_index_dict
                 for pc in pc_list:
                     if current_pc <= pc:
                         return pc
-                return pc_interval_dict['pc_interval_end']
+                # return pc_interval_dict['pc_interval_end']
 
-    # when prt_ftn_name does not in FDG
-    # lead nodes
+    # fallback, no-edge nodes, leaf nodes
     if depth in ftn_not_covered.keys():
         ftn_uncovered=ftn_not_covered[depth]
         if len(ftn_uncovered)>=1:
             for pc in ftn_uncovered:
-                if current_pc<pc:
+                if current_pc<=pc:
                     return pc
+
+    if 'fallback' in ftn_not_covered.keys():
+        for pc in ftn_not_covered['fallback']:
+            if current_pc<=pc:
+                return pc
     return pc_interval_dict['pc_interval_end']
 
 

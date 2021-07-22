@@ -6,6 +6,7 @@ from mythril.laser.ethereum.state.global_state import GlobalState
 from typing import Dict, Tuple, List
 
 import logging
+import fdg.FDG_global
 
 log = logging.getLogger(__name__)
 
@@ -88,6 +89,11 @@ class InstructionCoveragePlugin(LaserPlugin):
                 % (self.tx_id, end_coverage - self.initial_coverage)
             )
             self.tx_id += 1
+            i=0
+            for code, code_cov in self.coverage.items():
+                if i==2:return
+                fdg.FDG_global.coverage[i]=sum(code_cov[1]) / float(code_cov[0]) * 100
+                i += 1
 
     def _get_covered_instructions(self) -> int:
         """Gets the total number of covered instructions for all accounts in
