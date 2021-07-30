@@ -13,6 +13,5 @@ global contract
 global depth_all_ftns_reached
 depth_all_ftns_reached=2
 
-
 global coverage
 coverage=[0,0]

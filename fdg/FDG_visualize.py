@@ -277,21 +277,13 @@ if __name__=='__main__':
     # function_list = [1]
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Bears.sol', 'Sale')
     # function_list = [1]
-    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/SolidifiedMain.sol', 'SolidifiedMain')
-    # function_list = [1]
+    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/SolidifiedMain.sol', 'SolidifiedMain')
+    function_list = [1]
     # error: slither.exceptions.SlitherException: Function not found on TMP_25(None)
 
-    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/THE_BANK.sol',
-    #                          'THE_BANK')
-    # function_list = [1,2]
-
-    #
-    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Set.sol', 'Crowdsourcing')
-    # function_list = [3,5,6,7]
-
-    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Vesting.sol', 'EcosystemVesting')
-    function_list = [2, 3, 5]
-
+    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/THE_BANK.sol',
+                             'THE_BANK')
+    function_list = [1,2]
 
     functionsDict = ftn_info.functions_dict_slither()
     # # visualize FDG based on function info

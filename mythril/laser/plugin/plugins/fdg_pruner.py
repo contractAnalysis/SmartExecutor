@@ -72,16 +72,8 @@ class FDG_pruner(LaserPlugin):
 
         self.info_1st={}
         self.info_following={}
-        # self.no_public_ftn=False
+        self.no_public_ftn=False
         self.all_ftn_pc_list=[]
-        
-
-        #
-        # self.off_fdg_ftn_covered = [0]
-        # self.off_fdg_ftn_pc=[0]
-        # self.off_fdg_selector_to_index={'fallback':0}
-        # self.depth_1_covered_selector_ftn={}
-        
 
 
     def initialize(self, symbolic_vm: LaserEVM) -> None:
@@ -116,25 +108,6 @@ class FDG_pruner(LaserPlugin):
                 self.OS_states[self._depth_]={}
                 if self._depth_>=2:
                     self.ftn_pairs[self._depth_-1]=[]
-            # get functions not covered,
-            if self._depth_>1 and self._depth_<=fdg.FDG_global.depth_all_ftns_reached+1:
-                ftn_to_pc = []
-                if self.ftn_covered_mark.count(0) > 0:
-                    ftn_to_pc = [self.ftn_pc[ftn_i] for ftn_i, item in enumerate(self.ftn_covered_mark) if
-                                 (item == 0) and (ftn_i in self.ftn_pc.keys())]
-                    self.ftn_not_covered_pc_dict[self._depth_-1] = sorted(ftn_to_pc)
-                    if self._depth_==2:
-                        self.ftn_not_covered_pc_dict['fallback'] = sorted(list(self.ftn_pc.values()))
-                    else:
-                        self.ftn_not_covered_pc_dict['fallback']=sorted(ftn_to_pc)
-                else:
-                    if self._depth_==2 and fdg.FDG_global.coverage[1]<98:
-                        self.ftn_not_covered_pc_dict['fallback']=self.all_ftn_pc_list
-                    else:
-                        self.ftn_not_covered_pc_dict['fallback']=[]
-
-
-
 
         #-------------------------------------------------
         ''' 
@@ -154,7 +127,7 @@ class FDG_pruner(LaserPlugin):
 
 
             # update and/or add data in self.fdg_pc for the next iteration in FDG exploration
-            if self._depth_ <= fdg.FDG_global.depth_all_ftns_reached and self._depth_>1:
+            if self._depth_ <= fdg.FDG_global.depth_all_ftns_reached+1 and self._depth_>1:
                 prt_no_child = []  # record funtions who do not have dependent functions
                 if self._depth_-1==1:
                     prt_ftns=self.ftn_start_nodes
@@ -168,6 +141,23 @@ class FDG_pruner(LaserPlugin):
                         child_nodes=self.FDG.graph[ftn_idx]
                     if len(child_nodes)==0:
                         prt_no_child.append(ftn_idx)
+                        if self._depth_ == 2:  # only do this at depth 2
+                            # if len(self.ftn_wo_edges_not_covered) > 0:
+                            #     child_nodes_pc = [self.ftn_pc[ftn_i] for ftn_i in self.ftn_wo_edges_not_covered if
+                            #                       ftn_i in self.ftn_pc.keys()]
+                            #     self.fdg_pc[ftn_idx] = sorted(child_nodes_pc)
+                            # else:
+                            #     pc_covered = [pc for ftn_i, pc in self.ftn_pc.items() if
+                            #                   self.ftn_covered_mark[ftn_i] == 1]
+                            #     pc_list = [pc for pc in self.all_ftn_pc_list if pc not in pc_covered]
+                            #     self.fdg_pc[ftn_idx] = sorted(pc_list)
+                            pc_covered = [pc for ftn_i, pc in self.ftn_pc.items() if
+                                          self.ftn_covered_mark[ftn_i] == 1]
+                            pc_list = [pc for pc in self.all_ftn_pc_list if pc not in pc_covered]
+                            if len(self.valid_pc_interval)>0:
+                                pc_list=[pc for pc in pc_list if utils.pc_is_valid(pc,self.valid_pc_interval)]
+                            self.fdg_pc[ftn_idx] = sorted(pc_list)
+
                         continue
                     if self._depth_<=fdg.FDG_global.depth_all_ftns_reached:
                         # update or add data in self.fdg_pc
@@ -176,7 +166,6 @@ class FDG_pruner(LaserPlugin):
                             child_nodes = list(set(child_nodes))
                             child_nodes_pc = [self.ftn_pc[ftn_i] for ftn_i in child_nodes if ftn_i in self.ftn_pc.keys()]
                             self.fdg_pc[ftn_idx]=sorted(child_nodes_pc)
-
 
                 # remove states, the functions of which have no dependent functions.
                 if len(prt_no_child)>0 and len(prt_no_child)<len(prt_ftns) and len(prt_ftns)>=2:# have at least one function not lead node
@@ -334,21 +323,6 @@ class FDG_pruner(LaserPlugin):
                                 self.OS_states[self._depth_][ftn_idx] = [copy(state)]
                             else:
                                 self.OS_states[self._depth_][ftn_idx] += [copy(state)]
-                        # else: # functions off-fdg
-                        #     if self._depth_==1:# when depth=1, only  record which functions are covered
-                        #         if state.node.function_name in self.off_fdg_ftn_covered_at_depth_1:
-                        #             continue
-                        #         if state.node.function_name=='fallback':
-                        #             self.off_fdg_ftn_covered_at_depth_1.append('fallback')
-                        #         else:
-                        #             self.off_fdg_ftn_covered_at_depth_1.append(utils.get_function_id(state.node.function_name))
-                        #     else:# when depth>1, directly update the cover-recording list
-                        #         if self.off_fdg_ftn_covered.count(0)>0:
-                        #             selector=utils.get_function_id(state.node.function_name)
-                        #             if selector in self.off_fdg_selector_to_index.keys():
-                        #                 off_fdg_ftn_idx=self.off_fdg_selector_to_index[selector]
-                        #                 self.off_fdg_ftn_covered[off_fdg_ftn_idx]=1
-                        #
 
 
             # record if the function covered
@@ -371,10 +345,11 @@ class FDG_pruner(LaserPlugin):
             '''
             # at depth 1, build FDG
             if self._depth_==1:
-                self.all_ftn_pc_list.sort()
                 self.ftn_start_nodes=list(set(self.ftn_start_nodes))
                 if len(self.ftn_start_nodes)==0:
                     fdg.FDG_global.transaction_count =2
+
+
 
                 # extract valid pc interval
                 if len(self.gt_pc)>0:
@@ -384,11 +359,10 @@ class FDG_pruner(LaserPlugin):
                 # build FDG
                 self.FDG.build_fdg_3d_array(self.ftn_start_nodes)
 
-                # # flag the case when there is no public function except fallback
-                # if self.FDG.num_ftn==1: # only have constructor
-                #     self.no_public_ftn=True
-              
-                
+                # flag the case when there is no public function except fallback
+                if self.FDG.num_ftn==1:
+                    self.no_public_ftn=True
+                self.all_ftn_pc_list.sort()
                 # make sure 2 transactions are issued
                 if self.FDG.depth_all_ftns_reached ==1:
                     # if self.ftn_covered_mark.count(0)==0:
@@ -408,26 +382,18 @@ class FDG_pruner(LaserPlugin):
                     if selector in self.selector_pc.keys():
                         self.ftn_pc[ftn_i]=self.selector_pc[selector]
                         self.pc_ftn[self.selector_pc[selector]]=ftn_i
-                
-                # # collect all off-fdg public functions including fallback, pure/view functions and functions of state variables
-                # i=1
-                # if 'fallback' in self.depth_1_covered_selector_ftn.values():
-                #     self.off_fdg_ftn_covered[0]=1
-                # for selector,pc in self.selector_pc.items():
-                #     if selector=='ffffffff':continue
-                #     if selector not in self.FDG.index_to_selector.values():
-                #         self.off_fdg_selector_to_index[selector]=i
-                #         self.off_fdg_ftn_pc.append(pc)
-                #         if selector in self.depth_1_covered_selector_ftn.keys():
-                #             self.off_fdg_ftn_covered.append(1)
-                #         else:self.off_fdg_ftn_covered.append(0)
-                #         i+=1
-                #
 
 
                 # get values for ftn_wo_edges_not_covered_pc
                 self.ftn_wo_edges_not_covered=self.FDG.nodes_wo_edges
 
+
+            # get functions not covered
+            if self._depth_<=fdg.FDG_global.depth_all_ftns_reached:
+                if self.ftn_covered_mark.count(0)>0:
+                    ftn_to_pc=[self.ftn_pc[ftn_i] for ftn_i, item in enumerate(self.ftn_covered_mark) if (item==0) and (ftn_i in self.ftn_pc.keys())]
+                    ftn_to_pc.sort()
+                    self.ftn_not_covered_pc_dict[self._depth_]=ftn_to_pc
 
             if self._depth_>=fdg.FDG_global.depth_all_ftns_reached:
                 # stop symbolic execution if all functions are covered
@@ -446,21 +412,23 @@ class FDG_pruner(LaserPlugin):
 
         @symbolic_vm.post_hook("DUP1")
         def dup1_hook(state: GlobalState):
-
+            # if state.environment.active_function_name == 'fallback'\
+            # and self._depth_ >= 2:
             if self._depth_ >= 2:
                 # only consider DUP1 within a specified range
                 pc_here = state.mstate.pc
                 if len(self.gt_pc)==0:
                     if pc_here < self.pc_control_interval['pc_interval_start']: return
-                    if 'ffffffff' in self.selector_pc.keys():
-                        if pc_here< self.selector_pc['ffffffff']:
-                            return
                     if pc_here > self.pc_control_interval['pc_interval_end']: return
                 else:
                     if not utils.pc_is_valid(pc_here,self.valid_pc_interval):
                         return
-                
-
+                # handle the case when there is no public function except fallback
+                if self.no_public_ftn:
+                    pc_list = self.ftn_not_covered_pc_dict[self._depth_ - 1]
+                    state.mstate.pc = utils.assign_pc_seq_exe_phase_dup1(
+                        state.mstate.pc, self.all_ftn_pc_list,self.pc_control_interval)
+                    return
 
                 annotations = get_dependency_annotation(state)
                 ftn_seq=annotations.ftn_seq
@@ -518,8 +486,6 @@ class FDG_pruner(LaserPlugin):
 
         @symbolic_vm.pre_hook("PUSH4")
         def push4_hook(state: GlobalState):
-            # get the pc of opcode starting matching for each function
-            # if state.environment.active_function_name == 'fallback' \
             if self._depth_ == 1:
                 # assume that self.pc_control_interval is extracted
                 if state.mstate.pc< self.pc_control_interval['pc_interval_start']:
@@ -593,14 +559,6 @@ class FDG_pruner(LaserPlugin):
 
             :param state:
             """
-            # if self._depth_==1:
-            #     if state.node.function_name=='fallback':
-            #         self.depth_1_covered_selector_ftn['fallback']='fallback'
-            #         return
-            #     if state.node.function_name not in self.depth_1_covered_selector_ftn.values():
-            #         self.depth_1_covered_selector_ftn[utils.get_function_id(state.node.function_name)]=state.node.function_name
-            #
-
             # get function pairs from depth 1 to fdg.FDG_global.depth_all_ftns_reached
             if self._depth_>=2 and self._depth_<=fdg.FDG_global.depth_all_ftns_reached+1:
                 ftn_seq=get_dependency_annotation(state).ftn_seq
