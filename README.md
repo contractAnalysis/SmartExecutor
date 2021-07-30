@@ -1,9 +1,24 @@
 #SE_Guider
 
-SE_Guider is <br>
-How to install and  run SE_Guider:<br>
+<p>SE_Guider is designed to reduce the state space of symbolic execution.</p>
+<p>It is built on top of Mythril.</p>
+
+
+How to install:<br>
 &nbsp;&nbsp;  Exactly the same as Mythril below
-<p>&nbsp;</p>
+<br>
+<br>
+Get it with docker:<br>
+
+```bash
+$ docker pull 23278942/contract_analysis:SE_Guider_3
+```
+
+How to run SE_Guider:<br>
+```bash
+$ myth analyze <solidity-file>:<contract-name> -fdg
+```
+<p>&nbsp;&nbsp;</p>
 <hr>
 
 # Mythril
