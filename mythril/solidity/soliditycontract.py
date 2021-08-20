@@ -2,6 +2,7 @@
 and source mappings."""
 from typing import Dict, Set
 
+import fdg
 import mythril.laser.ethereum.util as helper
 from mythril.ethereum.evmcontract import EVMContract
 from mythril.ethereum.util import get_solc_json
@@ -87,6 +88,7 @@ class SolidityContract(EVMContract):
         self.solc_indices = self.get_solc_indices(data)
         self.solc_json = data
         self.input_file = input_file
+        self.name=name #@wei
 
         has_contract = False
 
@@ -100,7 +102,9 @@ class SolidityContract(EVMContract):
                 creation_code = contract["evm"]["bytecode"]["object"]
                 srcmap = contract["evm"]["deployedBytecode"]["sourceMap"].split(";")
                 srcmap_constructor = contract["evm"]["bytecode"]["sourceMap"].split(";")
+                fdg.FDG_global.method_identifiers = contract['evm']['methodIdentifiers']
                 has_contract = True
+
 
         # If no contract name is specified, get the last bytecode entry for the input file
 
@@ -116,7 +120,9 @@ class SolidityContract(EVMContract):
                     srcmap_constructor = contract["evm"]["bytecode"]["sourceMap"].split(
                         ";"
                     )
+                    fdg.FDG_global.method_identifiers = contract['evm']['methodIdentifiers']
                     has_contract = True
+
 
         if not has_contract:
             raise NoContractFoundError
@@ -128,7 +134,110 @@ class SolidityContract(EVMContract):
         self._get_solc_mappings(srcmap)
         self._get_solc_mappings(srcmap_constructor, constructor=True)
 
+        self.ftns_ast_srcmap={}
+        self.ftns_instruction_indices={}
+        self.get_function_instruction_indices()
+        # @wei
+        fdg.FDG_global.ftns_instr_indices = self.ftns_instruction_indices
+        fdg.FDG_global.mapping = self.mappings
+        fdg.FDG_global.solc_indices=self.solc_indices
+
         super().__init__(code, creation_code, name=name)
+
+
+    #@wei
+
+    def get_function_instruction_indices(self):
+        # get the srcmap for each public/external function
+        nodes_sourceUnit = self.solc_json['sources'][self.input_file]['ast']['nodes']
+        for nodes_contractDefinition in nodes_sourceUnit:
+            if nodes_contractDefinition['nodeType'] == 'ContractDefinition':
+                con_name = nodes_contractDefinition['name']
+                self.ftns_ast_srcmap[con_name] = {}
+                for node in nodes_contractDefinition['nodes']:
+                    if node['nodeType'] in ['FunctionDefinition','VariableDeclaration' ] and node['visibility'] in ['public', 'external']:
+                        ftn_name = node['name']
+                        if len(str(ftn_name))>0:
+                            self.ftns_ast_srcmap[con_name][ftn_name] = [int(item) for item in str(node["src"]).split(':')]
+                        else:
+                            if 'isConstructor' in node.keys():
+                                if node['isConstructor']:
+                                    continue
+                            ftn_name='fallback'
+                            self.ftns_ast_srcmap[con_name][ftn_name] = [int(item) for item in
+                                                                            str(node["src"]).split(':')]
+
+        # for each function, get indices of elements in mapping that the elements belong to it based on mapping.
+        # the elements in mapping and their corresponding instructions have the same indices
+
+        for idx in range(len(self.mappings)):
+            file_idx = self.mappings[idx].solidity_file_idx
+            if file_idx >= 0:
+                offset = self.mappings[idx].offset
+                length = self.mappings[idx].length
+                save_flag = False
+                for con_name_1, ftn_srcmap in self.ftns_ast_srcmap.items():
+                    # look for function and its srcmap
+                    for ftn_name, src in ftn_srcmap.items():
+                        if offset >= src[0] and offset + length <= (src[0] + src[1]):
+                            save_flag = True
+                            break
+                    if save_flag:
+                        break
+                if save_flag:
+                    if ftn_name in self.ftns_instruction_indices.keys():
+                        self.ftns_instruction_indices[ftn_name] += [idx]
+                    else:
+                        self.ftns_instruction_indices[ftn_name] = [idx]
+
+
+    def get_function_instruction_indices_multiple_contracts(self):
+        # get the srcmap for each public/external function
+        nodes_sourceUnit=self.solc_json['sources'][self.input_file]['ast']['nodes']
+        for nodes_contractDefinition in nodes_sourceUnit:
+            if nodes_contractDefinition['nodeType']=='ContractDefinition':
+                con_name=nodes_contractDefinition['name']
+                self.ftns_ast_srcmap[con_name]={}
+                for node in nodes_contractDefinition['nodes']:
+                    if node['nodeType'] == 'FunctionDefinition' and node['visibility'] in ['public', 'external']:
+                        ftn_name = node['name']
+                        if ftn_name=='':
+                            ftn_name=node['kind']
+                        self.ftns_ast_srcmap[con_name][ftn_name] = [int(item) for item in str(node["src"]).split(':')]
+
+        # for each function, get indices of elements in mapping that the elements belong to it based on mapping.
+        # the elements in mapping and their corresponding instructions have the same indices
+        for contract_name in self.ftns_ast_srcmap.keys():
+            self.ftns_instruction_indices[contract_name]={}
+            contract=self.solc_json["contracts"][self.input_file][contract_name]
+            srcmap_ = contract["evm"]["deployedBytecode"]["sourceMap"].split(";")
+            mappings=self._get_solc_mappings_wei(srcmap_)
+            for idx in range(len(mappings)):
+                file_idx = mappings[idx].solidity_file_idx
+                print(f'file_idx={file_idx}')
+                if file_idx >= 0:
+                    solidity = self.solc_indices[file_idx]
+
+                    full_src_maps = self.solc_indices[file_idx].full_contract_src_maps
+                    element_src_map = mappings[idx].solc_mapping
+                    if element_src_map != full_src_maps:
+                        offset = mappings[idx].offset
+                        length = mappings[idx].length
+                        save_flag = False
+
+
+                        for ftn_name, src in self.ftns_ast_srcmap[contract_name].items():
+                            if offset >= src[0] and offset + length <= (src[0] + src[1]):
+                                save_flag = True
+                                break
+                        if save_flag:
+
+                            if ftn_name in self.ftns_instruction_indices[contract_name].keys():
+                                self.ftns_instruction_indices[contract_name][ftn_name] += [idx]
+                            else:
+                                self.ftns_instruction_indices[contract_name][ftn_name] = [idx]
+
+
 
     @staticmethod
     def get_solc_indices(data: Dict) -> Dict:
@@ -257,3 +366,4 @@ class SolidityContract(EVMContract):
                 )
             prev_item = item
             mappings.append(SourceMapping(idx, offset, length, lineno, item))
+

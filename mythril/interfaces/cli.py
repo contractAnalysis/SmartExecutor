@@ -14,6 +14,7 @@ import sys
 import coloredlogs
 import traceback
 
+import fdg
 import mythril.support.signatures as sigs
 from argparse import ArgumentParser, Namespace, RawTextHelpFormatter
 
@@ -853,6 +854,7 @@ def parse_args_and_execute(parser: ArgumentParser, args: Namespace) -> None:
         execute_command(
             disassembler=disassembler, address=address, parser=parser, args=args
         )
+
     except CriticalError as ce:
         exit_with_error(args.__dict__.get("outform", "text"), str(ce))
     except Exception:

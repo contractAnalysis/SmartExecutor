@@ -21,30 +21,26 @@ class Function_info():
         contract = slither.get_contract_from_name(self.contract_name)
         assert contract
 
-        # constructors_list = []
-        # for item in contract.constructors:
-        #     constructors_list.append(item.name)
-
-
         function_dict = {}
-        ftn_public=[]
 
-        i = 1
+        i = 2 # 0 is reserved for constructor and 1 for fallback
         for f in contract.functions:
             if f.name.__eq__('slitherConstructorVariables'): continue
             if f.name.__eq__('slitherConstructorConstantVariables'): continue
 
             if f.is_constructor: continue
 
+
             # only consider public, external functions
             summary=f.get_summary()
             if len(summary)>=3:
                 if summary[2] not in ['public','external']:
                     continue
-            if f.full_name.__eq__('fallback()'):continue
 
-            ftn_public.append(f.full_name)
-            func_hash = self.get_function_id(f.full_name)
+            if f.name.__eq__('fallback'):
+                func_hash = 'None'
+            else:
+                func_hash = self.get_function_id(f.full_name)
 
             r_list = []
             f_r = f.all_conditional_state_variables_read()
@@ -61,14 +57,24 @@ class Function_info():
             if len(f_w) > 0:
                 w_list = [sv.name for sv in f_w]
 
-            if len(r_list) != 0 or len(w_list) != 0:
+            # if len(r_list) != 0 or len(w_list) != 0:
+            #     if f.name.__eq__('fallback'):
+            #         function_dict['f1'] = [f.name, r_list, w_list, func_hash, 1]
+            #     else:
+            #         function_dict['f' + str(i)] = [f.full_name, r_list, w_list, func_hash,i]
+            #         i = i + 1
+
+            if f.name.__eq__('fallback'):
+                function_dict['f1'] = [f.name, r_list, w_list, func_hash, 1]
+            else:
                 function_dict['f' + str(i)] = [f.full_name, r_list, w_list, func_hash,i]
                 i = i + 1
 
-
+        if 'f1' not in function_dict.keys():
+            function_dict['f1'] = ["fallback", [], [], "None", 1]
 
         function_dict['f0'] = ["constructor", [], [], "", 0]
-        print(f'all public functions:{ftn_public}')
+
         return function_dict
 
     def get_function_id(self,sig: str) ->str:

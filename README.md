@@ -1,6 +1,6 @@
 
 # SE_Guider
-<p>SE_Guider is designed to reduce the state space of symbolic execution.</p>
+<p>SE_Guider is designed to reduce the state space of symbolic execution on smart contracts .</p>
 <p>It is built on top of Mythril.</p>
 
 

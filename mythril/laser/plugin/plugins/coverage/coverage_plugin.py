@@ -89,10 +89,12 @@ class InstructionCoveragePlugin(LaserPlugin):
                 % (self.tx_id, end_coverage - self.initial_coverage)
             )
             self.tx_id += 1
+            #@wei, get coverage at the end of each transaction
             i=0
             for code, code_cov in self.coverage.items():
                 if i==2:return
                 fdg.FDG_global.coverage[i]=sum(code_cov[1]) / float(code_cov[0]) * 100
+                fdg.FDG_global.ftns_instr_cov[i]=code_cov[1]
                 i += 1
 
     def _get_covered_instructions(self) -> int:

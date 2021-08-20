@@ -248,9 +248,9 @@ def get_nodes_edges_from_fdg(fdg:FDG):
 if __name__=='__main__':
     colors = ['orange','green','purple','brown','pink','gray','olive','cyan','navy','blueviolet','purple','magenta','crimson']
 
-    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken')
-    #
-    # function_list = [1, 5, 7, 6, 10]
+    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken')
+    function_list = [2, 9, 8, 10, 13]
+
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/Crowdsale.sol', 'Crowdsale')
     # function_list = [1,2,3]
 
@@ -271,19 +271,34 @@ if __name__=='__main__':
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Expiry.sol', 'SoloMargin')
     # function_list = [8,9,11,20,22,23]
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/HUBRISSTAKING.sol', 'HUBRISSTAKING')
-    # function_list = [1,3]
+    # function_list = [2,4]
 
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/play_me_quiz.sol', 'play_me_quiz')
     # function_list = [1]
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Bears.sol', 'Sale')
     # function_list = [1]
-    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/SolidifiedMain.sol', 'SolidifiedMain')
-    function_list = [1]
-    # error: slither.exceptions.SlitherException: Function not found on TMP_25(None)
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/SolidifiedMain.sol', 'SolidifiedMain')
+    # function_list = [1]
+    # # error: slither.exceptions.SlitherException: Function not found on TMP_25(None)
 
-    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/THE_BANK.sol',
-                             'THE_BANK')
-    function_list = [1,2]
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/THE_BANK.sol',
+    #                          'THE_BANK')
+    # function_list = [1,2]
+
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Game11B.sol',
+    #                          'Game11B')
+    # function_list = [1]
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Vesting.sol',
+    #                          'EcosystemVesting')
+    # function_list = [4,5,7]
+
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/MKernel.sol',
+    #                          'KernelEscrow')
+    # function_list = [2,3,4]
+
+    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/RetroArtTokenAuction.sol',
+                             'RetroArtTokenAuction')
+    function_list = [9,11,12,13,18,19,21,22]
 
     functionsDict = ftn_info.functions_dict_slither()
     # # visualize FDG based on function info

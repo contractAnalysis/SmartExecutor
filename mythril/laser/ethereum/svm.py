@@ -240,12 +240,11 @@ class LaserEVM:
 
                 execute_message_call(self, address)
 
+                for hook in self._stop_sym_trans_hooks:
+                    hook()
 
                 for hook in self._stop_sym_trans_hooks_laserEVM:
                     hook(self)
-
-                for hook in self._stop_sym_trans_hooks:
-                    hook()
                 i+=1
         else:
             for i in range(self.transaction_count):

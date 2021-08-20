@@ -19,6 +19,8 @@ class FDG():
         self.limit_maximum_depth=5
         self.ftn_to_index={}
         self.index_to_ftn={}
+        self.ftn_0_to_index={} # not function full name ( i.e., without parentheses and argument types)
+        self.index_to_ftn_0={}
         self.ftn_to_selector={}
         self.index_to_selector={}
         self.labels=set()
@@ -30,7 +32,9 @@ class FDG():
         for key, value in functions_dict.items():
             #value: full_name,read_set, write_set,hash_value, index
             self.ftn_to_index[value[0]]=value[4]
+            self.ftn_0_to_index[str(value[0]).split('(')[0]]=value[4]
             self.index_to_ftn[value[4]]=value[0]
+            self.index_to_ftn_0[value[4]] = str(value[0]).split('(')[0]
             self.index_to_selector[value[4]] = value[3]
             self.ftn_to_selector[value[0]] = value[3]
             self.labels=self.labels.union(value[1]+value[2])
@@ -223,7 +227,10 @@ class FDG():
             if depth in function_pairs_dict.keys():
                 ftn_pairs = function_pairs_dict[depth]
                 for (ftn_from, ftn_to) in ftn_pairs:
-                    array_d[0, ftn_to, ftn_from] = self.fdg_3d_array[depth, ftn_to, ftn_from]
+                    if self.fdg_3d_array[depth, ftn_to, ftn_from]==-1:
+                        array_d[0, ftn_to, ftn_from] = self.num_label
+                    else:
+                        array_d[0, ftn_to, ftn_from] = self.fdg_3d_array[depth, ftn_to, ftn_from]
                 self.fdg_3d_array_new = np.concatenate((self.fdg_3d_array_new, array_d), axis=0)
 
 

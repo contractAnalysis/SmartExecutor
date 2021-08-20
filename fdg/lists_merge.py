@@ -65,7 +65,6 @@ def merge_fix_list_1(list_1, list_2):
             if j == len(list_2): break
             if list_1[i] == list_2[j]:
                 j += 1
-
         if j < len(list_2):
             c += list_2[j:]
         break
@@ -94,53 +93,55 @@ def merge_fix_list_1_specified_lenth(list_1, list_2, specified_length):
 
 
 if __name__ == '__main__':
-    print(f'{[1, 2, 5, 7]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [5], 3)}')
-
-    # #print(merge_fix_list_1([1,2,5,7],[4,5]))
-    # #print(merge_fix_list_1([1, 2, 5, 7], [2,8]))
-    # #print(merge_fix_list_1([1, 2, 5, 7], [2,7]))
-    # #print(merge_fix_list_1([1, 2, 5, 7], [2,1]))
-    # #print(merge_fix_list_1([1, 2, 5, 7], [1,3,7]))
-    # print('=====================')
-
+    # print(f'{[1, 2, 5, 7]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [5], 3)}')
+    #
+    # # #print(merge_fix_list_1([1,2,5,7],[4,5]))
+    # # #print(merge_fix_list_1([1, 2, 5, 7], [2,8]))
+    # # #print(merge_fix_list_1([1, 2, 5, 7], [2,7]))
+    # # #print(merge_fix_list_1([1, 2, 5, 7], [2,1]))
+    # # #print(merge_fix_list_1([1, 2, 5, 7], [1,3,7]))
+    # # print('=====================')
+    #
     # # print(f'{[1,2,5,7]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7],[1, 5],3)}')
     # print(f'{[1,2,5,7,3,5]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7],[1,3,5],5)}')
     # print(f'{[1,2,5,7,3,5]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7],[1,3,5],4)}')
     # print(f'{[1,2,5,7,3,5]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7],[1,3,5],3)}')
-    print(f'{[1, 2, 5, 7]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [1, 3, 5], 2)}')
-    print(f'{[1, 2, 5, 7]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [1, 3, 5], 1)}')
-    print(f'{[1, 2, 3, 5, 7]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [1, 3, 5], 0)}')
+    # print(f'{[1, 2, 5, 7]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [1, 3, 5], 2)}')
+    # print(f'{[1, 2, 5, 7]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [1, 3, 5], 1)}')
+    # print(f'{[1, 2, 3, 5, 7]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [1, 3, 5], 0)}')
+    #
+    # print('=====================')
+    # print(f'{[1, 2, 5, 7, 3, 5, 6, 9]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [1, 3, 5, 6, 9], 5)}')
+    # print(f'{[1, 2, 5, 7, 3, 5, 6, 9]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [1, 3, 5, 6, 9], 4)}')
+    # print(f'{[1, 2, 5, 7]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [5], 3)}')
+    # print(f'{[1, 2, 3, 5, 7]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [1], 2)}')
+    # print(f'{[1, 2, 3, 5, 7]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [], 2)}')
+    # print(f'{[1, 2, 3, 5, 7]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [1, 3, 5], 0)}')
 
-    print('=====================')
-    print(f'{[1, 2, 5, 7, 3, 5, 6, 9]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [1, 3, 5, 6, 9], 5)}')
-    print(f'{[1, 2, 5, 7, 3, 5, 6, 9]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [1, 3, 5, 6, 9], 4)}')
-    print(f'{[1, 2, 5, 7]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [5], 3)}')
-    print(f'{[1, 2, 3, 5, 7]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [1], 2)}')
-    print(f'{[1, 2, 3, 5, 7]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [], 2)}')
-    print(f'{[1, 2, 3, 5, 7]}--{merge_fix_list_1_specified_lenth([1, 2, 5, 7], [1, 3, 5], 0)}')
+    pass
 
-    print('=====================')
-
-    print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([7, 4, 5, 6, 9], [4, 6, 9])}')
-    print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([7, 4, 5, 6, 9], [4, 6])}')
-    print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([7, 4, 5, 6, 9], [7, 6, 9])}')
-    print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([7, 4, 5, 6, 9], [9])}')
-    print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([7, 4, 5, 6, 9], [7])}')
-    print('=====================')
-
-    print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([7, 4], [7, 4, 5, 6, 9])}')
-    print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([7, 5, 9], [7, 4, 5, 6, 9])}')
-    print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([4, 5, 6], [7, 4, 5, 6, 9])}')
-    print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([9], [7, 4, 5, 6, 9])}')
-    print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([7], [7, 4, 5, 6, 9])}')
-
-    # print(f'{[3,5,7]}--{merge_2_list([7],[3,5])}')
-    # print(f'{[3,5,7]}--{merge_2_list([3,5],[7])}')
-    # print(f'{[3,5]}--{merge_2_list([3,5],[3])}')
-    # print(f'{[3,5]}--{merge_2_list([3,5],[5])}')
-    # print(f'{[3,5]}--{merge_2_list([3],[3,5])}')
-    # print(f'{[3,5]}--{merge_2_list([5],[3,5])}')
-    # print(f'{[3,5]}--{merge_2_list([3,5],[3,5])}')
-    # print(f'{[3,5]}--{merge_2_list([],[3,5])}')
-    # print(f'{[3,5]}--{merge_2_list([3,5],[])}')
-    # print(f'{[]}--{merge_2_list([],[])}')
+    # print('=====================')
+    #
+    # print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([7, 4, 5, 6, 9], [4, 6, 9])}')
+    # print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([7, 4, 5, 6, 9], [4, 6])}')
+    # print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([7, 4, 5, 6, 9], [7, 6, 9])}')
+    # print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([7, 4, 5, 6, 9], [9])}')
+    # print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([7, 4, 5, 6, 9], [7])}')
+    # print('=====================')
+    #
+    # print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([7, 4], [7, 4, 5, 6, 9])}')
+    # print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([7, 5, 9], [7, 4, 5, 6, 9])}')
+    # print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([4, 5, 6], [7, 4, 5, 6, 9])}')
+    # print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([9], [7, 4, 5, 6, 9])}')
+    # print(f'{[7, 4, 5, 6, 9]}--{merge_2_list([7], [7, 4, 5, 6, 9])}')
+    #
+    # # print(f'{[3,5,7]}--{merge_2_list([7],[3,5])}')
+    # # print(f'{[3,5,7]}--{merge_2_list([3,5],[7])}')
+    # # print(f'{[3,5]}--{merge_2_list([3,5],[3])}')
+    # # print(f'{[3,5]}--{merge_2_list([3,5],[5])}')
+    # # print(f'{[3,5]}--{merge_2_list([3],[3,5])}')
+    # # print(f'{[3,5]}--{merge_2_list([5],[3,5])}')
+    # # print(f'{[3,5]}--{merge_2_list([3,5],[3,5])}')
+    # # print(f'{[3,5]}--{merge_2_list([],[3,5])}')
+    # # print(f'{[3,5]}--{merge_2_list([3,5],[])}')
+    # # print(f'{[]}--{merge_2_list([],[])}')
