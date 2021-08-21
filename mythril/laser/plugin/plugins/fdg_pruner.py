@@ -61,22 +61,15 @@ class FDG_pruner(LaserPlugin):
 
 
         self.OS_states={}
-        self.ftn_pairs={}
+        self.ftn_pairs={} # save (parent, child)
 
-
-
-
-        self.all_ftn_pc_list=[]
         self.ftn_not_covered = []
         self.ftn_not_covered_pc = []
         self.ftn_sv_not_covered_pc = []
         self.ftn_wo_edges_not_covered = []
 
         self.ftn_instructions_coverage_info={}
-
-        self.ftn_instructions_executed={}
         self.ftn_instructions_indices={}
-        self.ftn_instructions_xx={}
         self.ftn_identifiers={}
 
         self.seq_1_parent_considered = {}
@@ -85,6 +78,7 @@ class FDG_pruner(LaserPlugin):
         self.seq_depth_max=0
         self.seq_current_package={} 
         self.seq_ftn_no_sequences=[]
+        self.flag_ftn_no_sequence=False
 
 
 
@@ -139,107 +133,12 @@ class FDG_pruner(LaserPlugin):
             :return:
             """
             self._iteration_+=1
-
             # define variables to save states and function pairs
             if self._iteration_ <= fdg.FDG_global.depth_all_ftns_reached+1:
                 self.OS_states[self._iteration_]={}
                 if self._iteration_>=2:
                     self.ftn_pairs[self._iteration_]=[]
 
-            # update and/or add data in self.fdg_pc for the next iteration in FDG exploration
-            if self._iteration_ <= fdg.FDG_global.depth_all_ftns_reached+1 and self._iteration_>1:
-
-                prt_no_child = []  # record funtions who do not have dependent functions
-                prt_ftns=self.OS_states[self._iteration_-1].keys()
-                for ftn_idx in prt_ftns:
-                    child_nodes=copy(self.ftn_wo_edges_not_covered) # always consider those functions having no edges
-                    if ftn_idx in self.FDG.graph.keys():
-                        child_nodes+=self.FDG.graph[ftn_idx]
-                    if len(child_nodes)==0:
-                        prt_no_child.append(ftn_idx)
-                        continue
-
-                    # update or add data in self.fdg_pc
-                    if self._iteration_<=fdg.FDG_global.depth_all_ftns_reached:
-                        child_nodes = list(set(child_nodes))
-                        child_nodes_pc = [self.ftn_pc[ftn_i] for ftn_i in child_nodes if ftn_i in self.ftn_pc.keys()]
-                        self.fdg_pc[ftn_idx]=sorted(child_nodes_pc)
-                    else: # prepare for level-1 data
-                        target_childs=list(set(self.ftn_not_covered).intersection(set(child_nodes)))
-                        if len(target_childs)==0:
-                            prt_no_child.append(ftn_idx)
-                        else:
-                            self.seq_1_parent_considered[ftn_idx] = sorted([self.ftn_pc[ftn_i] for ftn_i in target_childs if ftn_i in self.ftn_pc.keys()])
-
-
-                # remove states, the functions of which have no dependent functions.
-                if len(prt_no_child)>0 and len(prt_no_child)<len(prt_ftns) and len(prt_ftns)>=2:# have at least one function not lead node
-                    for state in laserEVM.open_states:
-                        # if not state.constraints.is_possible: continue
-                        if state.node.function_name in self.FDG.ftn_to_index.keys():
-                            ftn_idx = self.FDG.ftn_to_index[state.node.function_name]
-                            if ftn_idx in prt_no_child:
-                                laserEVM.open_states.remove(state)
-
-
-            # generate Sequence object
-            if self._iteration_ == fdg.FDG_global.depth_all_ftns_reached + 2:
-                # sequence genration
-                # build new fdg
-                self.FDG.build_fdg_3d_array_new(self.ftn_pairs)
-
-                # create an Sequence object
-                seq_object = Sequence(self.FDG, self.ftn_not_covered, 5)
-                # get ready for sequence generation(parpare some data for sequence generation)
-                seq_object.prepare_sequence_generation()
-                status,self.seq_ftn_no_sequences=seq_object.get_all_sequences()
-                self.seq_object=seq_object
-                if not status: # no sequences generated
-                    fdg.FDG_global.transaction_count=self._iteration_ -1
-                    return
-
-
-            
-            # sequence execution (when multiple parents are considered in sequence generation)
-            if self._iteration_>fdg.FDG_global.depth_all_ftns_reached+1:
-                if self.seq_depth==self.seq_depth_max:
-                    self.seq_depth=-1
-
-                if self.seq_depth==-1:
-                    while(self.seq_depth==-1):
-                        self.seq_depth = 0
-                        self.seq_depth_max = 0
-                        self.seq_current_package=self.seq_object.get_package_dict(self.ftn_not_covered)
-
-                        # no sequence is available
-                        if len(self.seq_current_package.keys())==0 or len(self.seq_current_package['locate_state'])==0:
-                            print(f'no sequence generated')
-                            # stop
-                            self.seq_depth=-1
-                            fdg.FDG_global.transaction_count=self._iteration_-1
-                            break
-                        # locate states
-                        states_for_seq_execution = []
-
-                        for value in self.seq_current_package['locate_state']:
-                            if value[0] in self.OS_states.keys():
-                                if value[1] in self.OS_states[value[0]].keys():
-                                    states_for_seq_execution+= self.OS_states[value[0]][value[1]]
-
-                        if len(states_for_seq_execution)>0:
-                            laserEVM.open_states=states_for_seq_execution
-                            # map ftn to its pc
-                            for depth,ftn_dict in self.seq_current_package.items():
-                                if depth !='locate_state':
-                                    for ftn_i, values in ftn_dict.items():
-                                        self.seq_current_package[depth][ftn_i]=sorted([self.ftn_pc[ftn] for ftn in values if ftn in self.ftn_pc.keys()])
-                                    if self.seq_depth_max<depth:
-                                        self.seq_depth_max=depth
-                        else: self.seq_depth=-1
-                else:
-                    self.seq_depth+=1
-          
-                    
         @symbolic_vm.laser_hook("stop_sym_trans_laserEVM")
         def stop_sym_trans_hook_laserEVM(laserEVM:LaserEVM):
             """
@@ -252,10 +151,11 @@ class FDG_pruner(LaserPlugin):
             :return:
             """
             # assume that states are annotated by function sequences from which they are generated
-            if len(laserEVM.open_states)==0:print(f'no states are generated at depth {self._iteration_}')
+            if len(laserEVM.open_states)==0:
+                print(f'no states are generated at depth {self._iteration_}')
 
             # save states and check which functions are covered
-            if self._iteration_<=fdg.FDG_global.depth_all_ftns_reached+1 and self._iteration_>=1:
+            if self._iteration_<=fdg.FDG_global.depth_all_ftns_reached+1:
                 #save states from depth 1 to self._iteration__all_ftns_reached+1
                 for state in laserEVM.open_states:
                     if not state.constraints.is_possible:continue
@@ -290,7 +190,7 @@ class FDG_pruner(LaserPlugin):
                     cov_instr = sum(status)
                     cov = cov_instr / float(len(status)) * 100
                     self.ftn_instructions_coverage_info[ftn] = [cov, status]
-                    if cov < 99:
+                    if cov < 98:
                         # functions of public state variables can not be in FDG
                         if ftn in self.FDG.ftn_0_to_index.keys():
                             self.ftn_not_covered.append(self.FDG.ftn_0_to_index[ftn])
@@ -317,7 +217,7 @@ class FDG_pruner(LaserPlugin):
                 # build FDG
                 self.FDG.build_fdg_3d_array(ftn_start_nodes)
 
-                self.all_ftn_pc_list.sort()
+
 
                 # make sure 2 transactions are issued
                 if self.FDG.depth_all_ftns_reached == 1:
@@ -344,13 +244,6 @@ class FDG_pruner(LaserPlugin):
 
 
 
-            # check if no-edge functions covered or not
-            temp_keep=[]
-            for ftn_idx in self.ftn_wo_edges_not_covered:
-                if ftn_idx in self.ftn_not_covered:
-                    temp_keep+=[ftn_idx]
-            self.ftn_wo_edges_not_covered=temp_keep
-
             # get PCs of functions not covered
             ftn_to_pc = [self.ftn_pc[ftn_i] for ftn_i in self.ftn_not_covered if
                          ftn_i in self.ftn_pc.keys()]
@@ -362,6 +255,136 @@ class FDG_pruner(LaserPlugin):
             if self._iteration_>=fdg.FDG_global.depth_all_ftns_reached:
                 if len(self.ftn_not_covered)==0 and len(self.ftn_sv_not_covered_pc)==0:
                     # set to the current iteration, so that execution engine can stop
+                    fdg.FDG_global.transaction_count = self._iteration_
+                    return
+
+            # # check if the functions without sequences is covered or not
+            # if self._iteration_ > fdg.FDG_global.depth_all_ftns_reached + 1:
+            #     temp_keep = []
+            #     for ftn_item in self.seq_ftn_no_sequences:
+            #         if ftn_item in self.ftn_not_covered:
+            #             temp_keep.append(ftn_item)
+            #     self.seq_ftn_no_sequences = temp_keep
+
+            # update and/or add data in self.fdg_pc for the next iteration in FDG exploration
+            if self._iteration_ <=fdg.FDG_global.depth_all_ftns_reached:
+                # check if no-edge functions covered or not
+                temp_keep = []
+                for ftn_idx in self.ftn_wo_edges_not_covered:
+                    if ftn_idx in self.ftn_not_covered:
+                        temp_keep += [ftn_idx]
+                self.ftn_wo_edges_not_covered = temp_keep
+
+                prt_no_child = []  # record funtions who do not have dependent functions
+                prt_ftns = self.OS_states[self._iteration_].keys()
+                for ftn_idx in prt_ftns:
+                    child_nodes = copy(self.ftn_wo_edges_not_covered)  # always consider those functions having no edges
+                    if ftn_idx in self.FDG.graph.keys():
+                        child_nodes += self.FDG.graph[ftn_idx]
+                    if len(child_nodes) == 0:
+                        prt_no_child.append(ftn_idx)
+                        continue
+
+                    # update or add data in self.fdg_pc
+                    if self._iteration_ <fdg.FDG_global.depth_all_ftns_reached:
+                        child_nodes = list(set(child_nodes))
+                        child_nodes_pc = [self.ftn_pc[ftn_i] for ftn_i in child_nodes if ftn_i in self.ftn_pc.keys()]
+                        self.fdg_pc[ftn_idx] = sorted(child_nodes_pc)
+                    else:  # prepare for level-1 data
+                        target_childs = list(set(self.ftn_not_covered).intersection(set(child_nodes)))
+                        if len(target_childs) == 0:
+                            prt_no_child.append(ftn_idx)
+                        else:
+                            self.seq_1_parent_considered[ftn_idx] = sorted(
+                                [self.ftn_pc[ftn_i] for ftn_i in target_childs if ftn_i in self.ftn_pc.keys()])
+
+                # remove states, the functions of which have no dependent functions.
+                if len(prt_no_child) > 0 and len(prt_no_child) < len(prt_ftns) and len(
+                    prt_ftns) >= 2:  # have at least one function not lead node
+                    for state in laserEVM.open_states:
+                        # if not state.constraints.is_possible: continue
+                        if state.node.function_name in self.FDG.ftn_to_index.keys():
+                            ftn_idx = self.FDG.ftn_to_index[state.node.function_name]
+                            if ftn_idx in prt_no_child:
+                                laserEVM.open_states.remove(state)
+
+
+            # create Sequence object
+            if self._iteration_ == fdg.FDG_global.depth_all_ftns_reached + 1:
+                # sequence genration
+                # build new fdg
+                self.FDG.build_fdg_3d_array_new(self.ftn_pairs)
+
+                # create an Sequence object
+                seq_object = Sequence(self.FDG, self.ftn_not_covered, 5)
+                # get ready for sequence generation(parpare some data for sequence generation)
+                seq_object.prepare_sequence_generation()
+                self.seq_ftn_no_sequences = seq_object.get_all_sequences()
+                self.seq_object = seq_object
+
+
+            # sequence execution (when multiple parents are considered in sequence generation)
+            if self._iteration_ >= fdg.FDG_global.depth_all_ftns_reached + 1:
+                if self.seq_depth == self.seq_depth_max:
+                    self.seq_depth = -1
+
+                if self.seq_depth == -1:
+                    while (self.seq_depth == -1):
+                        self.seq_depth = 0
+                        self.seq_depth_max = 0
+                        self.seq_current_package = self.seq_object.get_package_dict(self.ftn_not_covered)
+
+                        # no sequence is available
+                        if len(self.seq_current_package.keys()) == 0 or len(
+                            self.seq_current_package['locate_state']) == 0:
+                            print(f'no sequence generated or available')
+                            # stop
+                            # flag to start handling functions without sequences generated
+                            self.flag_ftn_no_sequence=True
+                            break
+
+                        # locate states
+                        states_for_seq_execution = []
+                        for value in self.seq_current_package['locate_state']:
+                            if value[0] in self.OS_states.keys():
+                                if value[1] in self.OS_states[value[0]].keys():
+                                    states_for_seq_execution += self.OS_states[value[0]][value[1]]
+
+                        if len(states_for_seq_execution) > 0:
+                            laserEVM.open_states = states_for_seq_execution
+                            # map ftn to its pc
+                            for depth, ftn_dict in self.seq_current_package.items():
+                                if depth != 'locate_state':
+                                    for ftn_i, values in ftn_dict.items():
+                                        self.seq_current_package[depth][ftn_i]=sorted([self.ftn_pc[ftn] for ftn in values if ftn in self.ftn_pc.keys()])
+
+                                    if self.seq_depth_max < depth:
+                                        self.seq_depth_max = depth
+                        else:
+                            # go to the next package
+                            self.seq_depth = -1
+                else: # continue execution in the same package
+                    self.seq_depth += 1
+
+
+            # handle functions with no sequences generated
+            if self.flag_ftn_no_sequence:
+                if len(self.seq_ftn_no_sequences)>0:
+                    # load states from FDG-guided phase
+                    states_to_load=[]
+                    states=self.OS_states[fdg.FDG_global.depth_all_ftns_reached]
+                    for values in states.values():
+                        for state in values:
+                            states_to_load.append(state)
+                    laserEVM.open_states=states_to_load
+
+                    self.seq_ftn_no_sequences_pc=sorted([self.ftn_pc[ftn_i] for ftn_i in self.seq_ftn_no_sequences if ftn_i in self.ftn_pc.keys()])
+
+                    # allow one more iteration
+                    fdg.FDG_global.transaction_count=self._iteration_+1
+
+                else:
+                    # end executiong
                     fdg.FDG_global.transaction_count = self._iteration_
 
 
@@ -398,9 +421,11 @@ class FDG_pruner(LaserPlugin):
 
 
                 # prepare a list of PCs of functions to be assigned
+                pc_list = []
                 if pre_ftn_name_idx==-1:  # functions do not in FDG, but change states
                     print(f'function {pre_ftn_name} does not in FDG, but changes states at iteration {self._iteration_-1}')
-                    pc_list=[]
+                elif self.flag_ftn_no_sequence:
+                    pc_list=self.seq_ftn_no_sequences_pc
                 else:
                     if self._iteration_ <= fdg.FDG_global.depth_all_ftns_reached:
                         pc_list = self.fdg_pc[pre_ftn_name_idx] if pre_ftn_name_idx in self.fdg_pc.keys() else []
@@ -411,8 +436,7 @@ class FDG_pruner(LaserPlugin):
                         if self.seq_depth in self.seq_current_package.keys() and \
                             pre_ftn_name_idx in self.seq_current_package[self.seq_depth].keys():
                             pc_list = self.seq_current_package[self.seq_depth][pre_ftn_name_idx]
-                        else:
-                            pc_list = []
+
 
                 # assign pc
                 state.mstate.pc = utils.assign_pc_seq_exe_phase_dup1(state.mstate.pc, pc_list,
@@ -442,8 +466,7 @@ class FDG_pruner(LaserPlugin):
                 ftn_selector = state.instruction['argument'][2:]
                 if ftn_selector not in self.selector_pc.keys():
                     self.selector_pc[ftn_selector] = state.mstate.pc
-                    if ftn_selector!='ffffffff':
-                        self.all_ftn_pc_list.append(state.mstate.pc)
+
 
         # -------------------------------------------------
         ''' 
@@ -540,14 +563,3 @@ class FDG_pruner(LaserPlugin):
                 return
 
 
-        @symbolic_vm.laser_hook("execute_state")
-        def execute_state_hook(global_state: GlobalState):
-            # ftn_name=global_state.node.function_name
-            #
-            # if ftn_name in self.ftn_instructions_executed.keys():
-            #     self.ftn_instructions_executed[ftn_name]+=[f'pc {global_state.mstate.pc}; {global_state.instruction}']
-            #
-            # else:
-            #     self.ftn_instructions_executed[ftn_name] = [f'pc {global_state.mstate.pc}; {global_state.instruction}']
-
-            pass

@@ -287,10 +287,12 @@ class Sequence():
                     self.ftn_seq_and_shortest_seq_dict[p_ele]['new']['shortest'][index][0:-1][::-1] \
                     for p_ele, index in zip(comb, p_seq_index)]
 
-                merge_seq = self._merge_sequences_ordered(nested_sequence)
-                #merge_seq = self._merge_sequences_all_permutation(nested_sequence)
+                # merge_seq = self._merge_sequences_ordered(nested_sequence)
+                merge_seq = self._merge_sequences_all_permutation(nested_sequence)
+
 
                 for seq in merge_seq:
+                    if len(seq)==1:continue
                     temp=seq+[ftn_idx]
                     if temp not in collection_seq:
                         collection_seq.append(temp)
@@ -365,8 +367,8 @@ class Sequence():
             if len(all_sequences_ftn)>0:
                 self.all_sequences[ftn_idx]=sorted(all_sequences_ftn,key=len)
 
-        if len(self.all_sequences.keys())==0:return False, {}
-
+        if len(self.all_sequences.keys())==0:return {}
+        print(f'all sequences generated={self.all_sequences}')
         # use an 2d array to indicate which sequences are assigned
         ftn_list = []
         ftn_seq_num = []
@@ -383,7 +385,7 @@ class Sequence():
 
 
         # return functions that do not have sequences
-        return True, list(set(self.ftn_idx_not_covered).difference(set(self.all_sequences.keys())))
+        return list(set(self.ftn_idx_not_covered).difference(set(self.all_sequences.keys())))
 
 
     def get_package_dict(self,ftn_not_covered:list):
