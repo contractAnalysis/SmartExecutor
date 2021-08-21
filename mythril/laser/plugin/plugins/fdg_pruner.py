@@ -79,6 +79,7 @@ class FDG_pruner(LaserPlugin):
         self.seq_current_package={} 
         self.seq_ftn_no_sequences=[]
         self.flag_ftn_no_sequence=False
+        self.seq_ftn_no_sequence_count=0
 
 
 
@@ -369,6 +370,11 @@ class FDG_pruner(LaserPlugin):
 
             # handle functions with no sequences generated
             if self.flag_ftn_no_sequence:
+                # only execute one time
+                self.seq_ftn_no_sequence_count+=1
+                if self.seq_ftn_no_sequence_count>1:
+                    fdg.FDG_global.transaction_count = self._iteration_
+                    return
                 if len(self.seq_ftn_no_sequences)>0:
                     # load states from FDG-guided phase
                     states_to_load=[]
