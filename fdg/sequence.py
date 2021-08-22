@@ -215,51 +215,7 @@ class Sequence():
         self.ftn_seq_and_shortest_seq_dict = self._get_sequences_and_shortest_sequences()
 
 
-    # # consider all sequences for each parent
-    # def _get_sequences_by_level(self, parent_groups:list,level:int,ftn_idx):
-    #     """
-    #     Only consider shortest sequences
-    #     :param parent_groups:[[2,3,5],[3,6]]
-    #     :param level : number of parents to consider
-    #     :param ftn_idx : the child
-    #     :return:
-    #     """
-    #     assert self.ftn_seq_and_shortest_seq_dict
-    #
-    #     # get sequences through parent combination
-    #     parent_combinations = self._get_combination(parent_groups, level)
-    #
-    #     collection_seq = []  # save the sequences generated
-    #     for comb in parent_combinations:
-    #         # check if each parent has shortest sequence or not
-    #         p_seq_num = [self.ftn_seq_and_shortest_seq_dict[p_element]['new']['seq_num'] for p_element in
-    #                      comb]
-    #         # if one parent does not have sequence, ignore this parent combination
-    #         if p_seq_num.count(0) > 0: continue
-    #
-    #         # some parent has multiple shortest sequences, so need to do combination
-    #         p_seq_num_list = [list(range(num)) for num in p_seq_num]
-    #         p_seq_index_comb = [list(com) for com in it.product(*p_seq_num_list)]
-    #         for p_seq_index in p_seq_index_comb:
-    #             # replace each parent with its shortest sequence
-    #             # (remove 0: constructor is ignored.  reverse: so that parent itself is the last element in its shortest sequence )
-    #             nested_sequence = [
-    #                 self.ftn_seq_and_shortest_seq_dict[p_ele]['new']['sequences'][index][0:-1][::-1] \
-    #                 for p_ele, index in zip(comb, p_seq_index)]
-    #
-    #             merge_seq = self._merge_sequences_ordered(nested_sequence)
-    #             #merge_seq = self._merge_sequences_all_permutation(nested_sequence)
-    #
-    #
-    #             for seq in merge_seq:
-    #                 if len(seq)==1:continue
-    #                 temp=seq+[ftn_idx]
-    #                 if temp not in collection_seq:
-    #                     collection_seq.append(temp)
-    #
-    #     return collection_seq
-
-    # consider only the shortest sequences for each parent
+    # consider all sequences for each parent
     def _get_sequences_by_level(self, parent_groups:list,level:int,ftn_idx):
         """
         Only consider shortest sequences
@@ -276,7 +232,7 @@ class Sequence():
         collection_seq = []  # save the sequences generated
         for comb in parent_combinations:
             # check if each parent has shortest sequence or not
-            p_seq_num = [len(self.ftn_seq_and_shortest_seq_dict[p_element]['new']['shortest'] )for p_element in
+            p_seq_num = [self.ftn_seq_and_shortest_seq_dict[p_element]['new']['seq_num'] for p_element in
                          comb]
             # if one parent does not have sequence, ignore this parent combination
             if p_seq_num.count(0) > 0: continue
@@ -288,11 +244,11 @@ class Sequence():
                 # replace each parent with its shortest sequence
                 # (remove 0: constructor is ignored.  reverse: so that parent itself is the last element in its shortest sequence )
                 nested_sequence = [
-                    self.ftn_seq_and_shortest_seq_dict[p_ele]['new']['shortest'][index][0:-1][::-1] \
+                    self.ftn_seq_and_shortest_seq_dict[p_ele]['new']['sequences'][index][0:-1][::-1] \
                     for p_ele, index in zip(comb, p_seq_index)]
 
                 merge_seq = self._merge_sequences_ordered(nested_sequence)
-                # merge_seq = self._merge_sequences_all_permutation(nested_sequence)
+                #merge_seq = self._merge_sequences_all_permutation(nested_sequence)
 
 
                 for seq in merge_seq:
@@ -303,32 +259,76 @@ class Sequence():
 
         return collection_seq
 
-    def _merge_sequences_all_permutation(self, nested_list: list):
-        """
-        each permulation of nested list is created one sequence
-        :param nested_list:
-        :return:
-        """
-        result=[]
-        ele_num = len(nested_list)
-        if ele_num == 1: return []
-
-        permulation_nested_list=permutations(nested_list)
-        for per_tuple in permulation_nested_list:
-            temp_list=list(per_tuple)
-            p_first = temp_list[0]
-            p_first_length = len(temp_list[0])
-            merge_seq = p_first
-            for i in range(1,ele_num):
-                merge_seq = lists_merge.merge_fix_list_1_specified_lenth(merge_seq, temp_list[i],
-                                                                         p_first_length)
-            # form final sequence
-            # remove the elements from the first parent
-            final_seq = [[p_first_length, p_first[-1]]]
-            final_seq += merge_seq[p_first_length:]
-            if final_seq not in result:
-                result.append(final_seq)
-        return result
+    # # consider only the shortest sequences for each parent
+    # def _get_sequences_by_level(self, parent_groups:list,level:int,ftn_idx):
+    #     """
+    #     Only consider shortest sequences
+    #     :param parent_groups:[[2,3,5],[3,6]]
+    #     :param level : number of parents to consider
+    #     :param ftn_idx : the child
+    #     :return:
+    #     """
+    #     assert self.ftn_seq_and_shortest_seq_dict
+    #
+    #     # get sequences through parent combination
+    #     parent_combinations = self._get_combination(parent_groups, level)
+    #
+    #     collection_seq = []  # save the sequences generated
+    #     for comb in parent_combinations:
+    #         # check if each parent has shortest sequence or not
+    #         p_seq_num = [len(self.ftn_seq_and_shortest_seq_dict[p_element]['new']['shortest'] )for p_element in
+    #                      comb]
+    #         # if one parent does not have sequence, ignore this parent combination
+    #         if p_seq_num.count(0) > 0: continue
+    #
+    #         # some parent has multiple shortest sequences, so need to do combination
+    #         p_seq_num_list = [list(range(num)) for num in p_seq_num]
+    #         p_seq_index_comb = [list(com) for com in it.product(*p_seq_num_list)]
+    #         for p_seq_index in p_seq_index_comb:
+    #             # replace each parent with its shortest sequence
+    #             # (remove 0: constructor is ignored.  reverse: so that parent itself is the last element in its shortest sequence )
+    #             nested_sequence = [
+    #                 self.ftn_seq_and_shortest_seq_dict[p_ele]['new']['shortest'][index][0:-1][::-1] \
+    #                 for p_ele, index in zip(comb, p_seq_index)]
+    #
+    #             merge_seq = self._merge_sequences_ordered(nested_sequence)
+    #             # merge_seq = self._merge_sequences_all_permutation(nested_sequence)
+    #
+    #
+    #             for seq in merge_seq:
+    #                 if len(seq)==1:continue
+    #                 temp=seq+[ftn_idx]
+    #                 if temp not in collection_seq:
+    #                     collection_seq.append(temp)
+    #
+    #     return collection_seq
+    #
+    # def _merge_sequences_all_permutation(self, nested_list: list):
+    #     """
+    #     each permulation of nested list is created one sequence
+    #     :param nested_list:
+    #     :return:
+    #     """
+    #     result=[]
+    #     ele_num = len(nested_list)
+    #     if ele_num == 1: return []
+    #
+    #     permulation_nested_list=permutations(nested_list)
+    #     for per_tuple in permulation_nested_list:
+    #         temp_list=list(per_tuple)
+    #         p_first = temp_list[0]
+    #         p_first_length = len(temp_list[0])
+    #         merge_seq = p_first
+    #         for i in range(1,ele_num):
+    #             merge_seq = lists_merge.merge_fix_list_1_specified_lenth(merge_seq, temp_list[i],
+    #                                                                      p_first_length)
+    #         # form final sequence
+    #         # remove the elements from the first parent
+    #         final_seq = [[p_first_length, p_first[-1]]]
+    #         final_seq += merge_seq[p_first_length:]
+    #         if final_seq not in result:
+    #             result.append(final_seq)
+    #     return result
 
     def _merge_sequences_ordered(self,nested_list:list):
             ele_num=len(nested_list)
