@@ -214,9 +214,11 @@ class Sequence():
         # key-value format: target function: [[target function, other function, constructor],...]
         self.ftn_seq_and_shortest_seq_dict = self._get_sequences_and_shortest_sequences()
 
+
+    # # consider all sequences for each parent
     # def _get_sequences_by_level(self, parent_groups:list,level:int,ftn_idx):
     #     """
-    #   consider all sequences
+    #     Only consider shortest sequences
     #     :param parent_groups:[[2,3,5],[3,6]]
     #     :param level : number of parents to consider
     #     :param ftn_idx : the child
@@ -244,18 +246,20 @@ class Sequence():
     #             nested_sequence = [
     #                 self.ftn_seq_and_shortest_seq_dict[p_ele]['new']['sequences'][index][0:-1][::-1] \
     #                 for p_ele, index in zip(comb, p_seq_index)]
-    #             merge_seq = self._merge_sequences(nested_sequence)
     #
-
+    #             merge_seq = self._merge_sequences_ordered(nested_sequence)
+    #             #merge_seq = self._merge_sequences_all_permutation(nested_sequence)
+    #
+    #
     #             for seq in merge_seq:
-    #                 seq.append(ftn_idx)
-    #                 if seq not in collection_seq:
-    #                     collection_seq.append(merge_seq)
+    #                 if len(seq)==1:continue
+    #                 temp=seq+[ftn_idx]
+    #                 if temp not in collection_seq:
+    #                     collection_seq.append(temp)
     #
     #     return collection_seq
 
-
-
+    # consider only the shortest sequences for each parent
     def _get_sequences_by_level(self, parent_groups:list,level:int,ftn_idx):
         """
         Only consider shortest sequences
@@ -287,7 +291,7 @@ class Sequence():
                     self.ftn_seq_and_shortest_seq_dict[p_ele]['new']['shortest'][index][0:-1][::-1] \
                     for p_ele, index in zip(comb, p_seq_index)]
 
-                # merge_seq = self._merge_sequences_ordered(nested_sequence)
+                #merge_seq = self._merge_sequences_ordered(nested_sequence)
                 merge_seq = self._merge_sequences_all_permutation(nested_sequence)
 
 

@@ -405,6 +405,8 @@ class FDG_pruner(LaserPlugin):
             if self._iteration_ >= 2:
                 # only consider DUP1 within a specified range
                 pc_here = state.mstate.pc
+                if len(self.selector_pc)==0:
+                    return
                 if len(self.gt_pc)==0:
                     if pc_here < self.pc_control_interval['pc_interval_start']: return
                     if pc_here > self.pc_control_interval['pc_interval_end']: return

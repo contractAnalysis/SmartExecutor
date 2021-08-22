@@ -146,7 +146,6 @@ class SolidityContract(EVMContract):
 
 
     #@wei
-
     def get_function_instruction_indices(self):
         # get the srcmap for each public/external function
         nodes_sourceUnit = self.solc_json['sources'][self.input_file]['ast']['nodes']
@@ -160,11 +159,13 @@ class SolidityContract(EVMContract):
                         if len(str(ftn_name))>0:
                             self.ftns_ast_srcmap[con_name][ftn_name] = [int(item) for item in str(node["src"]).split(':')]
                         else:
-                            if 'isConstructor' in node.keys():
+                            if 'kind' in node.keys():
+                                ftn_name=node['kind']
+                            elif 'isConstructor' in node.keys():
                                 if node['isConstructor']:
-                                    continue
-                            ftn_name='fallback'
-                            self.ftns_ast_srcmap[con_name][ftn_name] = [int(item) for item in
+                                    ftn_name='constructor'
+                            if ftn_name=='fallback':
+                                self.ftns_ast_srcmap[con_name][ftn_name] = [int(item) for item in
                                                                             str(node["src"]).split(':')]
 
         # for each function, get indices of elements in mapping that the elements belong to it based on mapping.
@@ -190,52 +191,6 @@ class SolidityContract(EVMContract):
                     else:
                         self.ftns_instruction_indices[ftn_name] = [idx]
 
-
-    def get_function_instruction_indices_multiple_contracts(self):
-        # get the srcmap for each public/external function
-        nodes_sourceUnit=self.solc_json['sources'][self.input_file]['ast']['nodes']
-        for nodes_contractDefinition in nodes_sourceUnit:
-            if nodes_contractDefinition['nodeType']=='ContractDefinition':
-                con_name=nodes_contractDefinition['name']
-                self.ftns_ast_srcmap[con_name]={}
-                for node in nodes_contractDefinition['nodes']:
-                    if node['nodeType'] == 'FunctionDefinition' and node['visibility'] in ['public', 'external']:
-                        ftn_name = node['name']
-                        if ftn_name=='':
-                            ftn_name=node['kind']
-                        self.ftns_ast_srcmap[con_name][ftn_name] = [int(item) for item in str(node["src"]).split(':')]
-
-        # for each function, get indices of elements in mapping that the elements belong to it based on mapping.
-        # the elements in mapping and their corresponding instructions have the same indices
-        for contract_name in self.ftns_ast_srcmap.keys():
-            self.ftns_instruction_indices[contract_name]={}
-            contract=self.solc_json["contracts"][self.input_file][contract_name]
-            srcmap_ = contract["evm"]["deployedBytecode"]["sourceMap"].split(";")
-            mappings=self._get_solc_mappings_wei(srcmap_)
-            for idx in range(len(mappings)):
-                file_idx = mappings[idx].solidity_file_idx
-                print(f'file_idx={file_idx}')
-                if file_idx >= 0:
-                    solidity = self.solc_indices[file_idx]
-
-                    full_src_maps = self.solc_indices[file_idx].full_contract_src_maps
-                    element_src_map = mappings[idx].solc_mapping
-                    if element_src_map != full_src_maps:
-                        offset = mappings[idx].offset
-                        length = mappings[idx].length
-                        save_flag = False
-
-
-                        for ftn_name, src in self.ftns_ast_srcmap[contract_name].items():
-                            if offset >= src[0] and offset + length <= (src[0] + src[1]):
-                                save_flag = True
-                                break
-                        if save_flag:
-
-                            if ftn_name in self.ftns_instruction_indices[contract_name].keys():
-                                self.ftns_instruction_indices[contract_name][ftn_name] += [idx]
-                            else:
-                                self.ftns_instruction_indices[contract_name][ftn_name] = [idx]
 
 
 
