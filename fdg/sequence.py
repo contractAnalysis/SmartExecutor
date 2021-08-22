@@ -379,7 +379,7 @@ class Sequence():
             if len(all_sequences_ftn)>0:
                 self.all_sequences[ftn_idx]=sorted(all_sequences_ftn,key=len)
 
-        if len(self.all_sequences.keys())==0:return {}
+        if len(self.all_sequences.keys())==0:return False, {}
         print(f'all sequences generated={self.all_sequences}')
         # use an 2d array to indicate which sequences are assigned
         ftn_list = []
@@ -397,7 +397,7 @@ class Sequence():
 
 
         # return functions that do not have sequences
-        return list(set(self.ftn_idx_not_covered).difference(set(self.all_sequences.keys())))
+        return True,list(set(self.ftn_idx_not_covered).difference(set(self.all_sequences.keys())))
 
 
     def get_package_dict(self,ftn_not_covered:list):

@@ -78,7 +78,7 @@ class FDG_pruner(LaserPlugin):
         self.seq_depth_max=0
         self.seq_current_package={} 
         self.seq_ftn_no_sequences=[]
-        self.flag_ftn_no_sequence=False
+        self.flag_ftn_no_sequence_handle=False
         self.seq_ftn_no_sequence_count=0
 
 
@@ -320,8 +320,10 @@ class FDG_pruner(LaserPlugin):
                 seq_object = Sequence(self.FDG, self.ftn_not_covered, 5)
                 # get ready for sequence generation(parpare some data for sequence generation)
                 seq_object.prepare_sequence_generation()
-                self.seq_ftn_no_sequences = seq_object.get_all_sequences()
+                have_sequences,self.seq_ftn_no_sequences = seq_object.get_all_sequences()
                 self.seq_object = seq_object
+                if not have_sequences:
+                    fdg.FDG_global.transaction_count=self._iteration_
 
 
             # sequence execution (when multiple parents are considered in sequence generation)
@@ -341,7 +343,7 @@ class FDG_pruner(LaserPlugin):
                             print(f'no sequence generated or available')
                             # stop
                             # flag to start handling functions without sequences generated
-                            self.flag_ftn_no_sequence=True
+                            self.flag_ftn_no_sequence_handle=True
                             break
 
                         # locate states
@@ -369,7 +371,7 @@ class FDG_pruner(LaserPlugin):
 
 
             # handle functions with no sequences generated
-            if self.flag_ftn_no_sequence:
+            if self.flag_ftn_no_sequence_handle:
                 # only execute one time
                 self.seq_ftn_no_sequence_count+=1
                 if self.seq_ftn_no_sequence_count>1:
@@ -432,7 +434,7 @@ class FDG_pruner(LaserPlugin):
                 pc_list = []
                 if pre_ftn_name_idx==-1:  # functions do not in FDG, but change states
                     print(f'function {pre_ftn_name} does not in FDG, but changes states at iteration {self._iteration_-1}')
-                elif self.flag_ftn_no_sequence:
+                elif self.flag_ftn_no_sequence_handle:
                     pc_list=self.seq_ftn_no_sequences_pc
                 else:
                     if self._iteration_ <= fdg.FDG_global.depth_all_ftns_reached:
