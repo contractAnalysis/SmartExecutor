@@ -291,8 +291,8 @@ class Sequence():
                     self.ftn_seq_and_shortest_seq_dict[p_ele]['new']['shortest'][index][0:-1][::-1] \
                     for p_ele, index in zip(comb, p_seq_index)]
 
-                #merge_seq = self._merge_sequences_ordered(nested_sequence)
-                merge_seq = self._merge_sequences_all_permutation(nested_sequence)
+                merge_seq = self._merge_sequences_ordered(nested_sequence)
+                # merge_seq = self._merge_sequences_all_permutation(nested_sequence)
 
 
                 for seq in merge_seq:
