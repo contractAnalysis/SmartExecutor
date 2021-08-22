@@ -380,9 +380,10 @@ def create_analyzer_parser(analyzer_parser: ArgumentParser):
         "usage: file1.sol:OptionalContractName file2.sol file3.sol:OptionalContractName",
     )
     commands = analyzer_parser.add_argument_group("commands")
-    # @wei
+    #@wei
     commands.add_argument("-fdg", "--function_dependency_graph", default=False, action='store_true',
                           help="indicate if function dependency graph is used to guide state exploration")
+
 
     commands.add_argument("-g", "--graph", help="generate a control flow graph")
     commands.add_argument(
@@ -433,6 +434,14 @@ def create_analyzer_parser(analyzer_parser: ArgumentParser):
         type=int,
         default=2,
         help="Maximum number of transactions issued by laser",
+    )
+    #@wei
+    options.add_argument(
+        "-cl",
+        "--control-level",
+        type=int,
+        default=1,
+        help="possible values:1,2,3,4. the control level for sequence generation",
     )
     options.add_argument(
         "--execution-timeout",
@@ -690,6 +699,8 @@ def execute_command(
             print("Disassembly: \n" + disassembler.contracts[0].get_creation_easm())
 
     elif args.command in ANALYZE_LIST:
+        #@wei
+        fdg.FDG_global.control_level =args.control_level
         analyzer = MythrilAnalyzer(
             fdg_flag=args.function_dependency_graph,  #@wei  a flag
             strategy=args.strategy,

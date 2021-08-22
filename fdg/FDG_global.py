@@ -1,6 +1,7 @@
 from copy import copy
 import numpy as np
-
+global control_level
+control_level=1
 
 # control the number of symbolic transactions issued by LaserEVM
 global transaction_count

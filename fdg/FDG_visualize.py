@@ -296,9 +296,13 @@ if __name__=='__main__':
     #                          'KernelEscrow')
     # function_list = [2,3,4]
 
-    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/RetroArtTokenAuction.sol',
-                             'RetroArtTokenAuction')
-    function_list = [9,11,12,13,18,19,21,22]
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/RetroArtTokenAuction.sol',
+    #                          'RetroArtTokenAuction')
+    # function_list = [9,11,12,13,18,19,21,22]
+
+    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/token_contracts/HEX.sol',
+                             'HEX')
+    function_list = [1, 36, 30, 31, 34, 14, 37]
 
     functionsDict = ftn_info.functions_dict_slither()
     # # visualize FDG based on function info
