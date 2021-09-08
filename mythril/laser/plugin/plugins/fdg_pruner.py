@@ -482,9 +482,9 @@ class FDG_pruner(LaserPlugin):
 
         @symbolic_vm.pre_hook("PUSH4")
         def push4_hook(state: GlobalState):
-            # if self._iteration_ == 1:
-            #     if len(self.instruction_list) == 0:
-            #         self.instruction_list = np.array(state.environment.code.instruction_list)
+            if self._iteration_ == 1:
+                # if len(self.instruction_list) == 0:
+                #     self.instruction_list = np.array(state.environment.code.instruction_list)
 
                 # assume that self.pc_control_interval is extracted
                 if state.mstate.pc< self.pc_control_interval['pc_interval_start']:
