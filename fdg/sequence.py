@@ -9,11 +9,22 @@ from fdg import lists_merge
 
 
 class Sequence():
-    def __init__(self, fdg=None,ftn_idx_not_covered=[],num_seq_limit=5):
+    def __init__(self, fdg=None,ftn_idx_not_covered=[],valid_sequences={},num_seq_limit=5):
         self.fdg=fdg
         self.ftn_idx_not_covered=ftn_idx_not_covered# target function
+        self.all_valid_sequences={}
+        # initialize all_valid_sequences
+        for key, value in valid_sequences.items():
+            if len(value) > 0:
+                ele_size = [len(item) for item in value]
+                min_size = min(ele_size)
+                shortest_seq = [item for item in value if len(item) == min_size]
+                self.all_valid_sequences[key] = {'sequences': value, 'seq_num': len(value), 'shortest': shortest_seq,
+                             'shortest_depth': min_size}
+            else:
+                self.all_valid_sequences[key] = {'sequences': [], 'seq_num': 0, 'shortest': [], 'shortest_depth': 0}
         self.num_seq_limit=num_seq_limit
-        self.ftn_seq_and_shortest_seq_dict={}# for save all sequences for each function from updated FDG
+        # self.ftn_seq_and_shortest_seq_dict={}# for save all sequences for each function from updated FDG
 
 
         self.all_sequences = {}
@@ -39,113 +50,6 @@ class Sequence():
             l_p_dict[sv]=[ftn_i for ftn_i in ftn_write if ftn_i!=ftn_idx]
         return l_p_dict
 
-    def _generate_backward_graph(self,new_fdg:bool)->dict:
-        """
-        build graph backward
-        from lead nodes to contructor
-        :return:
-        """
-        graph_bk={}
-        if new_fdg:
-            fdg_3d_array=self.fdg.fdg_3d_array_new
-        else:fdg_3d_array=self.fdg.fdg_3d_array
-
-        # graph_backward_parent_label={}
-        for i in range(fdg_3d_array.shape[0]-1,-1,-1):
-            ftn_reached=self.fdg.ftn_reached_at_a_depth(i,new_fdg)
-            for ftn_to in ftn_reached:
-                ftn_parents_all=fdg_3d_array[i,ftn_to,:]
-                ftn_parents=list(np.where(ftn_parents_all>=0)[0])
-                if len(ftn_parents)==0:continue
-                if ftn_to in ftn_parents:
-                    ftn_parents.remove(ftn_to)
-                if ftn_to not in graph_bk.keys():
-                    graph_bk[ftn_to]=ftn_parents
-                else:
-                    graph_bk[ftn_to]+=ftn_parents
-        # remove repeated elements
-        for key in graph_bk.keys():
-            graph_bk[key]=list(set(graph_bk[key]))
-        if new_fdg:
-            self.graph_new=graph_bk
-        else:self.graph_original=graph_bk
-
-    def _generate_sequences(self,ftn_idx:int)->dict:
-        """
-        generate sequences from both original and new fdg
-        :param ftn_idx:
-        :return:{'original':[...],'new':[...]}
-        """
-        assert self.graph_original
-        assert self.graph_new
-
-        def _get_sequences(graph, function_idx, visited, path, seq):
-            """
-            The general method to get seqences from function_idx to leaf nodes in the graph
-            :param graph: a dict
-            :param function_idx: the source
-            :param visited: [# of nodes]
-            :param path:[]
-            :param seq: save the resulted sequences
-
-            """
-            # checking all the visited nodes
-            visited[function_idx] = True
-            path.append(function_idx)
-
-            if function_idx not in graph:  # leaf nodes
-                # se.append(list(np.copy(path))[1::][::-1])
-                seq.append(list(np.copy(path)))
-            else:
-                for i in graph[function_idx]:
-                    if visited[i] == False: 
-                        _get_sequences(graph, i, visited, path, seq)
-            path.pop()
-            visited[function_idx] = False
-
-        # get sequences from original FDG
-        seq_ori=[]
-        # path=[]
-        # visited = [False] * self.fdg.num_ftn
-        # _get_sequences(self.graph_original,ftn_idx,visited,path,seq_ori)
-
-        seq_new = []
-        # get sequences from new FDG (some functions may not appear in FDG)
-        if ftn_idx in self.graph_new:
-            seq_new = []
-            path=[]
-            visited = [False] * self.fdg.num_ftn
-            _get_sequences(self.graph_new, ftn_idx, visited, path, seq_new)
-
-        return {'original':seq_ori,'new':seq_new}
-
-
-    def _get_sequences_and_shortest_sequences(self):
-        """
-        get sequences and shortest sequence from new FDG
-        ignore sequences from original FDG
-        :return:
-        """
-        ftn_seq_dict = {}
-        for ftn_idx in range(1, self.fdg.num_ftn):
-            seqs = {}
-            # get sequences
-            sequences = self._generate_sequences(ftn_idx)
-
-            # only consider sequences from new FDG
-            for key, value in sequences.items():
-                if key=='new':
-                    if len(value) > 0:
-                        ele_size = [len(item) for item in value]
-                        min_size = min(ele_size)
-                        shortest_seq = [item for item in value if len(item) == min_size]
-                        seqs[key] = {'sequences': value, 'seq_num':len(value),'shortest':shortest_seq,'shortest_depth':min_size-1}
-
-                    else:
-                        seqs[key] = {'sequences': [], 'seq_num':0, 'shortest':[],'shortest_depth':0}
-
-            ftn_seq_dict[ftn_idx] = seqs
-        return ftn_seq_dict
 
     def _get_combination(self, list_for_comb):
             """
@@ -202,21 +106,6 @@ class Sequence():
         return com_re
 
 
-
-    """
-    updated sequence organization
-    generate and execute sequences level by level
-    level: reflect the number of parents considerd to generate sequences for a target function
-    """
-    def prepare_sequence_generation(self):
-        # get shortest sequences for all functions except constructor
-        self._generate_backward_graph(True)  # build graph based on new fdg
-        self._generate_backward_graph(False)  # build graph based on origial fdg
-
-        # key-value format: target function: [[target function, other function, constructor],...]
-        self.ftn_seq_and_shortest_seq_dict = self._get_sequences_and_shortest_sequences()
-
-
     # consider all sequences for each parent
     def _get_sequences_by_level_3_4(self, parent_groups:list,level:int,ftn_idx):
         """
@@ -226,7 +115,7 @@ class Sequence():
         :param ftn_idx : the child
         :return:
         """
-        assert self.ftn_seq_and_shortest_seq_dict
+        # assert self.ftn_seq_and_shortest_seq_dict
 
         # get sequences through parent combination
         parent_combinations = self._get_combination(parent_groups, level)
@@ -234,7 +123,9 @@ class Sequence():
         collection_seq = []  # save the sequences generated
         for comb in parent_combinations:
             # check if each parent has shortest sequence or not
-            p_seq_num = [self.ftn_seq_and_shortest_seq_dict[p_element]['new']['seq_num'] for p_element in
+            # p_seq_num = [self.ftn_seq_and_shortest_seq_dict[p_element]['new']['seq_num'] for p_element in
+            #              comb]
+            p_seq_num = [self.all_valid_sequences[p_element]['seq_num'] for p_element in
                          comb]
             # if one parent does not have sequence, ignore this parent combination
             if p_seq_num.count(0) > 0: continue
@@ -246,9 +137,10 @@ class Sequence():
                 # replace each parent with its shortest sequence
                 # (remove 0: constructor is ignored.  reverse: so that parent itself is the last element in its shortest sequence )
                 nested_sequence = [
-                    self.ftn_seq_and_shortest_seq_dict[p_ele]['new']['sequences'][index][0:-1][::-1] \
-                    for p_ele, index in zip(comb, p_seq_index)]
-
+                    # self.ftn_seq_and_shortest_seq_dict[p_ele]['new']['sequences'][index][0:-1][::-1] \
+                    # for p_ele, index in zip(comb, p_seq_index)]
+                    self.all_valid_sequences[p_ele]['sequences'][index] \
+                        for p_ele, index in zip(comb, p_seq_index)]
                 if fdg.FDG_global.control_level==3:
                     merge_seq = self._merge_sequences_ordered(nested_sequence)
                 else:
@@ -272,7 +164,7 @@ class Sequence():
         :param ftn_idx : the child
         :return:
         """
-        assert self.ftn_seq_and_shortest_seq_dict
+        # assert self.ftn_seq_and_shortest_seq_dict
 
         # get sequences through parent combination
         parent_combinations = self._get_combination(parent_groups, level)
@@ -280,7 +172,9 @@ class Sequence():
         collection_seq = []  # save the sequences generated
         for comb in parent_combinations:
             # check if each parent has shortest sequence or not
-            p_seq_num = [len(self.ftn_seq_and_shortest_seq_dict[p_element]['new']['shortest'] )for p_element in
+            # p_seq_num = [len(self.ftn_seq_and_shortest_seq_dict[p_element]['new']['shortest'] )for p_element in
+            #              comb]
+            p_seq_num = [len(self.all_valid_sequences[p_element]['shortest']) for p_element in
                          comb]
             # if one parent does not have sequence, ignore this parent combination
             if p_seq_num.count(0) > 0: continue
@@ -292,9 +186,10 @@ class Sequence():
                 # replace each parent with its shortest sequence
                 # (remove 0: constructor is ignored.  reverse: so that parent itself is the last element in its shortest sequence )
                 nested_sequence = [
-                    self.ftn_seq_and_shortest_seq_dict[p_ele]['new']['shortest'][index][0:-1][::-1] \
-                    for p_ele, index in zip(comb, p_seq_index)]
-
+                    # self.ftn_seq_and_shortest_seq_dict[p_ele]['new']['shortest'][index][0:-1][::-1] \
+                    # for p_ele, index in zip(comb, p_seq_index)]
+                    self.all_valid_sequences[p_ele]['shortest'][index]\
+                        for p_ele, index in zip(comb, p_seq_index)]
                 if fdg.FDG_global.control_level==1:
                     merge_seq = self._merge_sequences_ordered(nested_sequence)
                 else:
@@ -359,7 +254,6 @@ class Sequence():
 
 
     def get_all_sequences(self):
-        assert self.ftn_seq_and_shortest_seq_dict
         # get all sequences for each function
         for ftn_idx in self.ftn_idx_not_covered:
             # get labels and parents
@@ -381,6 +275,7 @@ class Sequence():
 
         if len(self.all_sequences.keys())==0:return False, {}
         print(f'all sequences generated={self.all_sequences}')
+
         # use an 2d array to indicate which sequences are assigned
         ftn_list = []
         ftn_seq_num = []
@@ -407,6 +302,7 @@ class Sequence():
         num_ftn_involved=[]
         for i,ftn in enumerate(self.ftn_list_assignment):
             if ftn not in ftn_not_covered:
+                # unmark all its unassigned sequences
                 self.all_sequences_assignment[:,i]=0
             else:num_ftn_involved.append(ftn)
 
@@ -414,7 +310,15 @@ class Sequence():
         current_package_dict={}
         current_package_dict['locate_state'] = []
 
+        # determine package size
+        package_size=len(num_ftn_involved)
+        if self.num_seq_limit>3* len(num_ftn_involved):
+            package_size=3* len(num_ftn_involved)
+        elif self.num_seq_limit> len(num_ftn_involved):
+            package_size=self.num_seq_limit
+
         package_size=self.num_seq_limit if self.num_seq_limit>len(num_ftn_involved) else len(num_ftn_involved)
+
         indices=np.where(self.all_sequences_assignment==1)
         indices_list=[(x,y) for x,y in zip(indices[0],indices[1])]
         if len(indices_list)>0:
@@ -528,6 +432,13 @@ if __name__=='__main__':
     r=[com for com in it.product(*a)]
     print(r)
     print(list(range(2)))
+
+    a=[True,True,False]
+
+    b=[1,2,3]
+    c=list(np.invert(a))
+    print(a)
+    print(b[c])
 
     pass
 

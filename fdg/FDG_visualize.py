@@ -1,6 +1,8 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import networkx as nx
+from matplotlib.lines import Line2D
+
 from fdg.FDG_3d_array import *
 
 
@@ -57,14 +59,25 @@ def draw_FDG_w_edge_label(nodes_list,edges_dict,colors_list):
         edges_color_list.append(edges_label_color_dict.get(label))
 
     # draw nodes
-    nodes = nx.draw(G, pos, node_size=500, node_color=nodes_color_list, alpha=0.9,
+    h1=nodes = nx.draw(G, pos, node_size=500, node_color=nodes_color_list, alpha=0.9,
                     labels={node: node for node in G.nodes()}, with_labels=True, font_color='black')
 
     # draw edges
-    nx.draw_networkx_edges(G, pos, arrowstyle="->", arrowsize=20, edge_color=edges_color_list, width=2)
+    h2=nx.draw_networkx_edges(G, pos, arrowstyle="->", arrowsize=20, edge_color=edges_color_list, width=2)
 
     # draw edge labels
     nx.draw_networkx_edge_labels(G, pos, edge_labels=edges_label_dict, font_color='black')
+    # _c='rgbcmky'*len(edges_list)
+    # clrs=[c for c in _c[:len(edges_list)]]
+    _c='rgbcmky'*len(nodes_list)
+    clrs=[c for c in _c[:len(nodes_list)]]
+    def make_proxy(crl,mappable,**kwargs):
+        return Line2D([0,1],[0,1], color=crl, **kwargs)
+
+    proxies=[make_proxy(clr,h1,lw=5) for clr in clrs]
+    labels = ["{}".format(node) for (node) in G.nodes()]
+    # labels=["{}->{}".format(fr,to) for (fr,to) in G.edges()]
+    plt.legend(proxies,labels)
 
     ax = plt.gca()
     ax.set_axis_off()
@@ -300,9 +313,15 @@ if __name__=='__main__':
     #                          'RetroArtTokenAuction')
     # function_list = [9,11,12,13,18,19,21,22]
 
-    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/token_contracts/HEX.sol',
-                             'HEX')
-    function_list = [1, 36, 30, 31, 34, 14, 37]
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/token_contracts/HEX.sol',
+    #                          'HEX')
+    # function_list = [1, 36, 30, 31, 34, 14, 37]
+
+
+    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Crafting.sol',
+                             'Crafting')
+    function_list = [2,3]
+
 
     functionsDict = ftn_info.functions_dict_slither()
     # # visualize FDG based on function info

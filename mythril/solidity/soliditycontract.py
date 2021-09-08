@@ -106,6 +106,7 @@ class SolidityContract(EVMContract):
                 has_contract = True
 
 
+
         # If no contract name is specified, get the last bytecode entry for the input file
 
         else:
@@ -122,7 +123,6 @@ class SolidityContract(EVMContract):
                     )
                     fdg.FDG_global.method_identifiers = contract['evm']['methodIdentifiers']
                     has_contract = True
-
 
         if not has_contract:
             raise NoContractFoundError
@@ -141,6 +141,7 @@ class SolidityContract(EVMContract):
         fdg.FDG_global.ftns_instr_indices = self.ftns_instruction_indices
         fdg.FDG_global.mapping = self.mappings
         fdg.FDG_global.solc_indices=self.solc_indices
+
 
         super().__init__(code, creation_code, name=name)
 

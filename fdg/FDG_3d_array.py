@@ -55,17 +55,17 @@ class FDG():
             read=-np.ones(self.num_label,dtype=int)
             write = -np.ones(self.num_label,dtype=int)
 
-            if value[1]:
+            if len(value[1])>0:
                 for label in value[1]:
                     lbl_index=self.label_to_index[label]
                     read[lbl_index] = int(lbl_index)
 
-            if value[2]:
+            if len(value[2]):
                 for label in value[2]:
                     lbl_index = self.label_to_index[label]
                     write[lbl_index] = int(lbl_index)
 
-            if value[4]==0:
+            if value[4]==0: #0: index of constructor()
                 self.sv_read[0,:]=-np.ones(self.num_label,dtype=int).T
                 self.sv_write[0,:] = -np.ones(self.num_label,dtype=int).T
             else:
@@ -99,6 +99,7 @@ class FDG():
                             self.graph[ftn_from] = [ftn_to]
                         if ftn_to not in self.nodes_w_edges:
                             self.nodes_w_edges.append(ftn_to)
+                        # save edge
                         self.edge_list.append((ftn_from, ftn_to))
                 # save nodes that have edges
                 if ftn_from not in self.nodes_w_edges:
@@ -109,16 +110,16 @@ class FDG():
                     self.graph[ftn_from]=list(set(self.graph[ftn_from]))
 
         self.fdg_3d_array=-np.ones((1, self.num_ftn, self.num_ftn))
-        self.fdg_3d_array_new=-np.ones((1, self.num_ftn, self.num_ftn))
+
 
         # set the default value for depth_all_ftns_reached
         self.depth_all_ftns_reached = 0
         self.depth_all_edges_reached=0
 
 
-
     def build_fdg_3d_array(self,function_list:list):
         """
+        calculate the depth all functions are reached at least once.
         stop build FDG when all edges are included
         :param function_list: [10,3,6]
         :return:
@@ -148,7 +149,7 @@ class FDG():
         # set to the value of self.num_label
         for ftn_idx in function_list:
             self.fdg_3d_array[0, ftn_idx, 0] = self.num_label
-            self.fdg_3d_array_new[0, ftn_idx, 0] = self.num_label
+
 
         # ---------------------------
         # at the depth > 1
@@ -175,7 +176,6 @@ class FDG():
                                 array_i[0, int(idx_to), int(idx_from)] = sv_idx
                                 if (int(idx_from),int(idx_to)) in edge_not_reached:
                                     edge_not_reached.remove((int(idx_from),int(idx_to)))
-
 
                 # mark the functions reached
                 for idx in ftn_read:
@@ -208,30 +208,6 @@ class FDG():
             self.depth_all_edges_reached=self.fdg_3d_array.shape[0]
         # # assume that self.depth_all_ftns_reached<=self.depth_all_edges_reached
         # assert(self.depth_all_ftns_reached<=self.depth_all_edges_reached)
-
-
-
-
-
-    def build_fdg_3d_array_new(self, function_pairs_dict: dict):
-        """
-        build new fdg from depth 2 to a depth all functions are reached
-        :param function_pairs_dict:
-        :return:
-        """
-        assert self.fdg_3d_array.shape[0] > 1
-        assert self.fdg_3d_array_new.shape[0] == 1
-        for depth in range(1, self.fdg_3d_array.shape[0]):
-            array_d = -np.ones((1, self.num_ftn, self.num_ftn))
-            # do not consider the depth not visited in FDG exploration phase
-            if depth in function_pairs_dict.keys():
-                ftn_pairs = function_pairs_dict[depth]
-                for (ftn_from, ftn_to) in ftn_pairs:
-                    if self.fdg_3d_array[depth, ftn_to, ftn_from]==-1:
-                        array_d[0, ftn_to, ftn_from] = self.num_label
-                    else:
-                        array_d[0, ftn_to, ftn_from] = self.fdg_3d_array[depth, ftn_to, ftn_from]
-                self.fdg_3d_array_new = np.concatenate((self.fdg_3d_array_new, array_d), axis=0)
 
 
     def ftn_reached_at_a_depth(self,depth,new_fdg_flag:bool)->list:
