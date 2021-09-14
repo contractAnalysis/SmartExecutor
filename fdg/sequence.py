@@ -4,8 +4,7 @@ import numpy as np
 import itertools as it
 
 import fdg
-from fdg import lists_merge
-
+from fdg import lists_merge, utils
 
 
 class Sequence():
@@ -23,21 +22,20 @@ class Sequence():
                              'shortest_depth': min_size}
             else:
                 self.all_valid_sequences[key] = {'sequences': [], 'seq_num': 0, 'shortest': [], 'shortest_depth': 0}
+
         self.num_seq_limit=num_seq_limit
-        # self.ftn_seq_and_shortest_seq_dict={}# for save all sequences for each function from updated FDG
 
-
-        self.all_sequences = {}
-        self.all_sequences_assignment=[]
-        self.ftn_list_assignment=[]
+        self.generated_sequences = {}
+        self.generated_sequences_assignment=[]
+        self.ftn_idx_to_column_idx={}
+        self.column_idx_to_ftn_idx = {}
         self.package_list=[]
 
-        self.shortest_flag=True
 
 
     def _get_label_parent(self,ftn_idx)->dict:
         """
-        get parents and their labels on the orginal fdg
+        get parents and their labels based on the write and read of state variables
         :param ftn_idx:
         :return:dict: key: label index, value: parent indices
         """
@@ -51,150 +49,92 @@ class Sequence():
         return l_p_dict
 
 
-    def _get_combination(self, list_for_comb):
-            """
-            -group indices with the same value [[1,4], [2,6],[5]]
-            -from each group, choose 1 index
-            -generate combinations with length from 2 to the number of groups
-            :param list_for_comb: like [-1, 0, 1, -1, 0, 2, 1]
-            :return: [(1, 2), (1, 6), (4, 2), (4, 6), (1, 5), (4, 5), (2, 5), (6, 5), (1, 2, 5), (1, 6, 5), (4, 2, 5), (4, 6, 5)]
-
-            """
-
-            com_re = []
-            # do combination from length 2 to the number of groups
-            num_groups = len(list_for_comb)
-            group_indices = range(num_groups)  # used for groups selection for combination
-
-            for c_len in range(2, num_groups + 1, 1):
-
-                # select c_len groups for combinations
-                com_groups = it.combinations(group_indices, c_len)
-                # for each c_len-group combination, get combination
-                for idx, g_indices in enumerate(com_groups):
-                    # combine groups to form a list, with each elment is the group
-                    g_for_com = [list_for_comb[g_indices[i]] for i in range(len(g_indices))]
-                    # do combination
-                    com_re += [com for com in it.product(*g_for_com)]
-
-            return com_re
-
-    def _get_combination(self, list_for_comb,comb_length:int):
-        """
-
-        :param list_for_comb: [[1,4], [2,6],[5]]
-        :param comb_length: 2 (two elements in a combination)
-        :return: [(1, 2), (1, 6), (4, 2), (4, 6), (1, 5), (4, 5), (2, 5), (6, 5)]
-        """
-        com_re = []
-        # do combination with length 2
-        num_groups = len(list_for_comb)
-        if num_groups<comb_length:return []
-
-        group_indices = range(num_groups)  # used for groups selection for combination
-
-        # select comb_length groups for combinations
-        com_groups = it.combinations(group_indices, comb_length)
-
-        # for each group combination, get combination
-        for idx, g_indices in enumerate(com_groups):
-            # combine groups to form a list, with each elment is the group
-            g_for_com = [list_for_comb[g_indices[i]] for i in range(len(g_indices))]
-            # do combination
-            com_re += [com for com in it.product(*g_for_com)]
-
-        return com_re
-
-
     # consider all sequences for each parent
-    def _get_sequences_by_level_3_4(self, parent_groups:list,level:int,ftn_idx):
+    def _get_sequences_by_level_3_4(self, parent_groups:list,num_groups:int,ftn_idx):
         """
         Only consider shortest sequences
         :param parent_groups:[[2,3,5],[3,6]]
-        :param level : number of parents to consider
+        :param num_groups : number of parents to consider
         :param ftn_idx : the child
         :return:
         """
         # assert self.ftn_seq_and_shortest_seq_dict
 
         # get sequences through parent combination
-        parent_combinations = self._get_combination(parent_groups, level)
+        parent_combinations =  utils.get_combination(parent_groups, num_groups)
 
         collection_seq = []  # save the sequences generated
         for comb in parent_combinations:
             # check if each parent has shortest sequence or not
-            # p_seq_num = [self.ftn_seq_and_shortest_seq_dict[p_element]['new']['seq_num'] for p_element in
-            #              comb]
-            p_seq_num = [self.all_valid_sequences[p_element]['seq_num'] for p_element in
-                         comb]
+
+            p_seq_num=[]
+            for p_element in comb:
+                if p_element in self.all_valid_sequences.keys():
+                    p_seq_num.append(self.all_valid_sequences[p_element]['seq_num'])
+                else:p_seq_num.append(0)
+
             # if one parent does not have sequence, ignore this parent combination
             if p_seq_num.count(0) > 0: continue
 
             # some parent has multiple shortest sequences, so need to do combination
-            p_seq_num_list = [list(range(num)) for num in p_seq_num]
-            p_seq_index_comb = [list(com) for com in it.product(*p_seq_num_list)]
+            p_seq_idx_list = [list(range(num)) for num in p_seq_num]
+            p_seq_index_comb = [list(com) for com in it.product(*p_seq_idx_list)]
             for p_seq_index in p_seq_index_comb:
                 # replace each parent with its shortest sequence
                 # (remove 0: constructor is ignored.  reverse: so that parent itself is the last element in its shortest sequence )
-                nested_sequence = [
-                    # self.ftn_seq_and_shortest_seq_dict[p_ele]['new']['sequences'][index][0:-1][::-1] \
-                    # for p_ele, index in zip(comb, p_seq_index)]
+                sequence_list = [
                     self.all_valid_sequences[p_ele]['sequences'][index] \
                         for p_ele, index in zip(comb, p_seq_index)]
                 if fdg.FDG_global.control_level==3:
-                    merge_seq = self._merge_sequences_ordered(nested_sequence)
+                    merge_seq = self._merge_sequences_ordered(sequence_list)
                 else:
-                    merge_seq = self._merge_sequences_all_permutation(nested_sequence)
-
+                    merge_seq = self._merge_sequences_all_permutation(sequence_list)
 
                 for seq in merge_seq:
                     if len(seq)==1:continue
                     temp=seq+[ftn_idx]
                     if temp not in collection_seq:
                         collection_seq.append(temp)
-
         return collection_seq
 
     # consider only the shortest sequences for each parent
-    def _get_sequences_by_level_1_2(self, parent_groups:list,level:int,ftn_idx):
+    def _get_sequences_by_level_1_2(self, parent_groups:list,num_groups:int,ftn_idx):
         """
         Only consider shortest sequences
         :param parent_groups:[[2,3,5],[3,6]]
-        :param level : number of parents to consider
+        :param num_groups : number of parents to consider
         :param ftn_idx : the child
         :return:
         """
-        # assert self.ftn_seq_and_shortest_seq_dict
 
         # get sequences through parent combination
-        parent_combinations = self._get_combination(parent_groups, level)
+        parent_combinations = utils.get_combination(parent_groups, num_groups)
 
         collection_seq = []  # save the sequences generated
         for comb in parent_combinations:
-            # check if each parent has shortest sequence or not
-            # p_seq_num = [len(self.ftn_seq_and_shortest_seq_dict[p_element]['new']['shortest'] )for p_element in
-            #              comb]
-            p_seq_num = [len(self.all_valid_sequences[p_element]['shortest']) for p_element in
-                         comb]
+            p_seq_num=[]
+            for p_element in comb:
+                if p_element in self.all_valid_sequences.keys():
+                    p_seq_num.append(len(self.all_valid_sequences[p_element]['shortest']))
+                else:p_seq_num.append(0)
+
             # if one parent does not have sequence, ignore this parent combination
             if p_seq_num.count(0) > 0: continue
 
             # some parent has multiple shortest sequences, so need to do combination
-            p_seq_num_list = [list(range(num)) for num in p_seq_num]
-            p_seq_index_comb = [list(com) for com in it.product(*p_seq_num_list)]
+            p_seq_idx_list = [list(range(num)) for num in p_seq_num]
+            p_seq_index_comb = [list(com) for com in it.product(*p_seq_idx_list)]
             for p_seq_index in p_seq_index_comb:
                 # replace each parent with its shortest sequence
                 # (remove 0: constructor is ignored.  reverse: so that parent itself is the last element in its shortest sequence )
-                nested_sequence = [
-                    # self.ftn_seq_and_shortest_seq_dict[p_ele]['new']['shortest'][index][0:-1][::-1] \
-                    # for p_ele, index in zip(comb, p_seq_index)]
+                sequence_list = [
                     self.all_valid_sequences[p_ele]['shortest'][index]\
                         for p_ele, index in zip(comb, p_seq_index)]
-                if fdg.FDG_global.control_level==1:
-                    merge_seq = self._merge_sequences_ordered(nested_sequence)
-                else:
-                    merge_seq = self._merge_sequences_all_permutation(nested_sequence)
 
+                if fdg.FDG_global.control_level==1:
+                    merge_seq = self._merge_sequences_ordered(sequence_list)
+                else:
+                    merge_seq = self._merge_sequences_all_permutation(sequence_list)
 
                 for seq in merge_seq:
                     if len(seq)==1:continue
@@ -221,7 +161,7 @@ class Sequence():
             p_first_length = len(temp_list[0])
             merge_seq = p_first
             for i in range(1,ele_num):
-                merge_seq = lists_merge.merge_fix_list_1_specified_lenth(merge_seq, temp_list[i],
+                merge_seq = lists_merge.merge_fix_list_1_specified_lenth_no_repeated_elements(merge_seq, temp_list[i],
                                                                          p_first_length)
             # form final sequence
             # remove the elements from the first parent
@@ -243,25 +183,27 @@ class Sequence():
             merge_seq = p_first
 
             for i in range(1, ele_num):
-                merge_seq = lists_merge.merge_fix_list_1_specified_lenth(merge_seq, order_nested_list[i],
+                merge_seq = lists_merge.merge_fix_list_1_specified_lenth_no_repeated_elements(merge_seq, order_nested_list[i],
                                                                          p_first_length)
 
             # form final sequence
             # remove the elements from the first parent
             final_seq=[[p_first_length, p_first[-1]]]
             final_seq+=merge_seq[p_first_length:]
-            return  [final_seq]
+            return [final_seq]
 
 
-    def get_all_sequences(self):
-        # get all sequences for each function
+    def generate_sequences(self):
+        # get all sequences for each uncovered function
         for ftn_idx in self.ftn_idx_not_covered:
             # get labels and parents
             l_p_dict = self._get_label_parent(ftn_idx)
             if len(l_p_dict) == 0: continue
 
             parent_groups = [values for values in l_p_dict.values()]
-            if len(parent_groups) <=1: continue
+            if len(parent_groups) <=1:
+                # this case is handled at the end of FDG-guided execution phase
+                continue
 
             # get all sequences for a function
             all_sequences_ftn=[]
@@ -270,64 +212,70 @@ class Sequence():
                     all_sequences_ftn+=self._get_sequences_by_level_3_4(parent_groups,num_parents+1,ftn_idx)
                 else:
                     all_sequences_ftn += self._get_sequences_by_level_1_2(parent_groups, num_parents +1,ftn_idx)
-            if len(all_sequences_ftn)>0:
-                self.all_sequences[ftn_idx]=sorted(all_sequences_ftn,key=len)
 
-        if len(self.all_sequences.keys())==0:return False, {}
-        print(f'all sequences generated={self.all_sequences}')
+            if len(all_sequences_ftn)>0:
+                self.generated_sequences[ftn_idx]=sorted(all_sequences_ftn,key=len)
+
+        if len(self.generated_sequences.keys())==0:return False, {}
+        print(f'all sequences generated={self.generated_sequences}')
 
         # use an 2d array to indicate which sequences are assigned
         ftn_list = []
         ftn_seq_num = []
-        for ftn_idx, sequences in self.all_sequences.items():
+        for ftn_idx, sequences in self.generated_sequences.items():
             ftn_list.append(ftn_idx)
             ftn_seq_num.append(len(sequences))
 
-        self.ftn_list_assignment = ftn_list
+
         num_ftn = len(ftn_list)
         max_seq_num = max(ftn_seq_num)
-        self.all_sequences_assignment= np.zeros([max_seq_num, num_ftn])
-        for idx in range(num_ftn):
-            self.all_sequences_assignment[:, idx][0:ftn_seq_num[idx]] = 1
+        # create a matrix to register all sequences for each uncovered function
+        self.generated_sequences_assignment= np.zeros([max_seq_num, num_ftn])
+        for idx, ftn_idx in enumerate(ftn_list):
+            self.ftn_idx_to_column_idx[ftn_idx]=idx
+            self.column_idx_to_ftn_idx[idx] = ftn_idx
+            self.generated_sequences_assignment[:, idx][0:ftn_seq_num[idx]] = 1
 
 
         # return functions that do not have sequences
-        return True,list(set(self.ftn_idx_not_covered).difference(set(self.all_sequences.keys())))
+        return True,list(set(self.ftn_idx_not_covered).difference(set(self.generated_sequences.keys())))
 
 
     def get_package_dict(self,ftn_not_covered:list):
-        if len(self.ftn_list_assignment)==0:return {}
+        if len(self.ftn_idx_to_column_idx.keys())==0:return {}
 
         # update: mark all sequences of a function that is covered
-        num_ftn_involved=[]
-        for i,ftn in enumerate(self.ftn_list_assignment):
-            if ftn not in ftn_not_covered:
+        ftn_to_be_assigned=[]
+        for ftn_idx in self.ftn_idx_to_column_idx.keys():
+            if ftn_idx not in ftn_not_covered:
                 # unmark all its unassigned sequences
-                self.all_sequences_assignment[:,i]=0
-            else:num_ftn_involved.append(ftn)
+                self.generated_sequences_assignment[:,self.column_idx_to_ftn_idx[ftn_idx]]=0
+            else:ftn_to_be_assigned.append(ftn_idx)
 
         # get sequences for the package
         current_package_dict={}
         current_package_dict['locate_state'] = []
 
         # determine package size
-        package_size=len(num_ftn_involved)
-        if self.num_seq_limit>3* len(num_ftn_involved):
-            package_size=3* len(num_ftn_involved)
-        elif self.num_seq_limit> len(num_ftn_involved):
+        package_size=len(ftn_to_be_assigned)
+        if self.num_seq_limit>3* len(ftn_to_be_assigned):
+            package_size=3* len(ftn_to_be_assigned)
+        elif self.num_seq_limit> len(ftn_to_be_assigned):
             package_size=self.num_seq_limit
 
-        package_size=self.num_seq_limit if self.num_seq_limit>len(num_ftn_involved) else len(num_ftn_involved)
 
-        indices=np.where(self.all_sequences_assignment==1)
+        indices=np.where(self.generated_sequences_assignment==1)
         indices_list=[(x,y) for x,y in zip(indices[0],indices[1])]
         if len(indices_list)>0:
             # transform sequences into graph
             package_indices=indices_list[0:package_size]
             sequences=[]
             for (seq_idx,col_idx) in package_indices:
-                ftn_idx=self.ftn_list_assignment[col_idx]
-                seq=self.all_sequences[ftn_idx][seq_idx]
+                # mark assigned sequences 0
+                self.generated_sequences_assignment[seq_idx, col_idx] = 0
+                # get the sequence
+                ftn_idx = self.column_idx_to_ftn_idx[col_idx]
+                seq=self.generated_sequences[ftn_idx][seq_idx]
                 sequences.append(seq)
 
             for seq in sequences:
@@ -346,13 +294,9 @@ class Sequence():
                         current_package_dict[i]={seq[i]:[seq[i+1]]}
                     else:
                         if seq[i] not in current_package_dict[i].keys():
-                            current_package_dict[i][seq[i]] = [seq[1+1]]
+                            current_package_dict[i][seq[i]] = [seq[i+1]]
                         else:
-                            current_package_dict[i][seq[i]] += [seq[1+1]]
-
-            # mark assigned sequences 0
-            for row_idx,col_idx in package_indices:
-                self.all_sequences_assignment[row_idx,col_idx]=0
+                            current_package_dict[i][seq[i]] += [seq[i+1]]
 
             # remove repeated elements
             for depth, seq_dict in current_package_dict.items():
@@ -391,56 +335,27 @@ if __name__=='__main__':
         print(i)
 
     print(f'===================')
-    com=combinations([[1,0],[2,7],[4,3]],r=1)
+    com=combinations([[1,0],[2,7],[4,3]],r=3)
     for i in com:
         print(i)
-    # r={11: [[(3, 2), 10, 11], [(3, 3), 10, 11], [(2, 8), 10, 11]], 3: [[(3, 2), 5, 3], [(2, 8), 5, 3], [(3, 2), 6, 3], [(2, 8), 6, 3], [(2, 9), 5, 3]]}
-    # for k,v in r.items():
-    #
-    #         r[k]+=[20]
-    #
-    # print(r)
-    # r={1:{2:[2],4:[7]}}
-    # for i in range(15):
-    #     if i in r[1].keys():
-    #         print(f'{i} is in r.')
-    # a=[0,0,0]
-    # if a== [0] * 3:
-    #     print('true')
 
-    # path = []
-    # visited= [False] * fdg.num_ftn
-    # seq_s = []
-    # seq = Sequence(fdg, 'withdraw()')
-    # seq.get_sequences(fdg.graph_dict_readwrite, 3, visited, path, seq_s)
-    # print(seq_s)
-
-
-
-    # seq=[[1],[2,3,1],[2],[1,2],[5]]
-    # seq_size = [len(item) for item in seq]
-    # min_size = min(seq_size)
-    # a=[item for i, item in enumerate(seq) if len(item)==min_size]
-    # print(a)
-
-    # seq= Sequence()
-    # re=seq._get_combination([[1,4], [2,6],[5]],2)
-    # print(re)
-
-
+    print(f'===================')
     a=[[0,1],[2,3],[2,4]]
     r=[com for com in it.product(*a)]
     print(r)
+
+    print(f'===================')
     print(list(range(2)))
 
+    print(f'===================')
     a=[True,True,False]
-
-    b=[1,2,3]
+    b=np.array([1,2,3])
     c=list(np.invert(a))
     print(a)
+    print(c)
     print(b[c])
 
-    pass
+
 
 
 

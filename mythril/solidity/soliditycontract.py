@@ -103,12 +103,9 @@ class SolidityContract(EVMContract):
                 srcmap = contract["evm"]["deployedBytecode"]["sourceMap"].split(";")
                 srcmap_constructor = contract["evm"]["bytecode"]["sourceMap"].split(";")
                 fdg.FDG_global.method_identifiers = contract['evm']['methodIdentifiers']
+                fdg.FDG_global.target_bytecode = code
                 has_contract = True
-
-
-
         # If no contract name is specified, get the last bytecode entry for the input file
-
         else:
             for contract_name, contract in sorted(
                 data["contracts"][input_file].items()
@@ -118,10 +115,9 @@ class SolidityContract(EVMContract):
                     code = contract["evm"]["deployedBytecode"]["object"]
                     creation_code = contract["evm"]["bytecode"]["object"]
                     srcmap = contract["evm"]["deployedBytecode"]["sourceMap"].split(";")
-                    srcmap_constructor = contract["evm"]["bytecode"]["sourceMap"].split(
-                        ";"
-                    )
+                    srcmap_constructor = contract["evm"]["bytecode"]["sourceMap"].split(";" )
                     fdg.FDG_global.method_identifiers = contract['evm']['methodIdentifiers']
+                    fdg.FDG_global.target_bytecode=code
                     has_contract = True
 
         if not has_contract:

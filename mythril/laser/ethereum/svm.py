@@ -10,7 +10,7 @@ from fdg import FDG_global
 from fdg.FDG_3d_array import FDG
 import fdg.FDG_global
 from fdg.sequence import Sequence
-from mythril.laser.ethereum.transaction.symbolic import execute_message_call_1
+
 from mythril.support.opcodes import opcodes as OPCODES
 from mythril.analysis.potential_issues import check_potential_issues
 from mythril.laser.execution_info import ExecutionInfo

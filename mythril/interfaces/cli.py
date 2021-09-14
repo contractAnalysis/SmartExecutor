@@ -440,7 +440,7 @@ def create_analyzer_parser(analyzer_parser: ArgumentParser):
         "-cl",
         "--control-level",
         type=int,
-        default=1,
+        default=2,
         help="possible values:1,2,3,4. the control level for sequence generation",
     )
     options.add_argument(

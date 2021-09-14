@@ -89,17 +89,7 @@ class Function_info():
         s.update(sig.encode("utf-8"))
         return s.hexdigest()[:8]
 
-    # def get_function_id(self,sig: str) ->str:
-    #     """'
-    #         Return the function id of the given signature
-    #     Args:
-    #         sig (str)
-    #     Return:
-    #         (int)
-    #     """
-    #     s = sha3.keccak_256()
-    #     s.update(sig.encode("utf-8"))
-    #     return s.hexdigest()[:8]
+
 
 
 if __name__=='__main__':
