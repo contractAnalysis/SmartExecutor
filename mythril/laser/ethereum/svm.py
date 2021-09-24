@@ -5,11 +5,11 @@ from copy import copy
 from datetime import datetime, timedelta
 from typing import Callable, Dict, DefaultDict, List, Tuple, Optional
 
-# from fdg.FDG import FDG
+from fdg.FDG import FDG
 from fdg import FDG_global
-from fdg.FDG_3d_array import FDG
+
 import fdg.FDG_global
-from fdg.sequence import Sequence
+
 
 from mythril.support.opcodes import opcodes as OPCODES
 from mythril.analysis.potential_issues import check_potential_issues

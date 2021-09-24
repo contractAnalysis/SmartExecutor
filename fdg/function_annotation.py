@@ -3,9 +3,8 @@ from copy import copy
 from virtualenv.config.convert import NoneType
 
 
-from fdg.FDG_3d_array import FDG
-from fdg.funtion_info import Function_info
-from fdg.sequence import Sequence
+
+
 from mythril.laser.ethereum.svm import LaserEVM
 from mythril.laser.plugin.interface import LaserPlugin
 from mythril.laser.plugin.builder import PluginBuilder

@@ -74,12 +74,16 @@ class FDG():
 
         # get all edges
         self.nodes = list(range(self.num_ftn))
+        self.edges={}
         self.nodes_wo_DD_edges=[]
         self.nodes_w_DD_edges=[]
         self.start_nodes=[]
 
         self.graph = {}
         self.graph[0]=list(range(1,self.num_ftn))
+        # save edges
+        for i in range(1,self.num_ftn):
+            self.edges['f'+str(0)+",f"+str(i)]='none' # no edge label
 
         # ignore constructor
         for ftn_from in range(1, self.num_ftn):
@@ -102,6 +106,11 @@ class FDG():
                         if ftn_to not in self.nodes_w_DD_edges:
                             self.nodes_w_DD_edges.append(ftn_to)
 
+                        # save edges
+                        if 'f'+str(ftn_from)+",f"+str(ftn_to) not in self.edges.keys():
+                            self.edges['f'+str(ftn_from)+",f"+str(ftn_to)]=self.index_to_label[sv_w_idx]
+
+
                 # save nodes that have edges
                 if ftn_from not in self.nodes_w_DD_edges:
                     self.nodes_w_DD_edges.append(ftn_from)
@@ -111,8 +120,8 @@ class FDG():
                     self.graph[ftn_from]=list(set(self.graph[ftn_from]))
 
         self.nodes_wo_DD_edges = list(set(self.nodes).difference(set(self.nodes_w_DD_edges)))
-        self.nodes_wo_DD_edges.remove(0)
-        self.nodes_wo_DD_edges.remove(1)
+        self.nodes_wo_DD_edges=[item for item in self.nodes_wo_DD_edges if item not in [0,1]]
+
 
 
 

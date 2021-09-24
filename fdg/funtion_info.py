@@ -5,7 +5,7 @@ import sha3
 class Function_info():
     def __init__(self,solidity_file:str, contract_name:str):
         self.solidity_file=solidity_file
-        self.contract_name=contract_name
+        self.contract_name=contract_name.lstrip().rstrip()
 
     def functions_dict_slither(self):
         '''
@@ -19,7 +19,9 @@ class Function_info():
 
         # Get the contract
         contract = slither.get_contract_from_name(self.contract_name)
-        assert contract
+
+        if not contract:
+            return {}
 
         function_dict = {}
 

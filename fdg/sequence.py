@@ -249,7 +249,7 @@ class Sequence():
         for ftn_idx in self.ftn_idx_to_column_idx.keys():
             if ftn_idx not in ftn_not_covered:
                 # unmark all its unassigned sequences
-                self.generated_sequences_assignment[:,self.column_idx_to_ftn_idx[ftn_idx]]=0
+                self.generated_sequences_assignment[:,self.ftn_idx_to_column_idx[ftn_idx]]=0
             else:ftn_to_be_assigned.append(ftn_idx)
 
         # get sequences for the package
