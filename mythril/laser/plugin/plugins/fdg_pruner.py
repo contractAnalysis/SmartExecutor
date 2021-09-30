@@ -131,11 +131,11 @@ class FDG_pruner(LaserPlugin):
                 if ftn == 'constructor': continue
                 self.ftn_instructions_coverage_info[ftn] = [0 / len(ftn_instr_list), ftn_instr_list]
 
-        @symbolic_vm.laser_hook("stop_sym_exec")
-        def stop_sym_exec_hook():
-            print(f'End of symbolic execution')
-            for ftn, ftn_cov in self.ftn_instructions_coverage_info.items():
-                print("{:.2f}% coverage for {}".format(ftn_cov[0], ftn))
+        # @symbolic_vm.laser_hook("stop_sym_exec")
+        # def stop_sym_exec_hook():
+        #     print(f'End of symbolic execution')
+        #     for ftn, ftn_cov in self.ftn_instructions_coverage_info.items():
+        #         print("{:.2f}% coverage for {}".format(ftn_cov[0], ftn))
 
             # # check the code coverage for each function
             # instr_cov_record_list = fdg.FDG_global.ftns_instr_cov
