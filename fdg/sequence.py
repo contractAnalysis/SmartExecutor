@@ -278,29 +278,25 @@ class Sequence():
                 p_sequences = self.all_valid_sequences[p_ftn]['sequences']
                 for p_seq in p_sequences:
                     if len(p_seq) == self.fdg.depth_limit:  # consider sequences of length self.fdg.depth_limit
-                        all_sequences_ftn.append([[self.fdg.depth_limit, p_seq[-1]], ftn_idx])
+                        if [[self.fdg.depth_limit, p_seq[-1]], ftn_idx] not in all_sequences_ftn:
+                            all_sequences_ftn.append([[self.fdg.depth_limit, p_seq[-1]], ftn_idx])
 
             # consider multiple parents
             if len(parent_groups) > 1:
                 # get all sequences for a function
 
                 for num_parents in range(1, len(parent_groups)):
+                    seq_list=[]
                     if fdg.FDG_global.control_level == 0:
                         seq_list=self._get_sequences_by_level_0(parent_groups, num_parents + 1, ftn_idx)
-                        for seq in seq_list:
-                            if seq not in all_sequences_ftn:
-                                all_sequences_ftn.append(seq)
 
                     elif fdg.FDG_global.control_level <= 2:
                         seq_list= self._get_sequences_by_level_1_2(parent_groups, num_parents + 1, ftn_idx)
-                        for seq in seq_list:
-                            if seq not in all_sequences_ftn:
-                                all_sequences_ftn.append(seq)
                     else:
                         seq_list= self._get_sequences_by_level_3_4(parent_groups, num_parents + 1, ftn_idx)
-                        for seq in seq_list:
-                            if seq not in all_sequences_ftn:
-                                all_sequences_ftn.append(seq)
+                    for seq in seq_list:
+                        if seq not in all_sequences_ftn:
+                            all_sequences_ftn.append(seq)
             # check if there are generated sequences
             if len(all_sequences_ftn) > 0:
                 self.generated_sequences[ftn_idx] = sorted(all_sequences_ftn, key=len)
@@ -429,20 +425,22 @@ class Sequence():
 
 
 if __name__ == '__main__':
-    # # ftn_info=Function_info('/home/wei/PycharmProjects/Contracts/_wei/Crowdsale.sol', 'Crowdsale')
-    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken')
-    #
-    # function_dict = ftn_info.functions_dict_slither()
-    #
-    # fdg_object = FDG(function_dict)
-    # valid_sequence = {13: [[2, 13]], 10: [[2, 10]], 12: [[10, 12], [2, 10, 12]], 11: [[10, 11], [2, 10, 11]],
-    #                   6: [[10, 12, 6]], 3: [[10, 12, 3]], 5: [[10, 12, 5]]}
-    #
-    # seq_object = Sequence(fdg_object, [14], valid_sequence, 5)
-    # fdg.FDG_global.control_level=0
-    # fdg_object.depth_limit=3
-    # seq_object.generate_sequences()
-    # print(f'sequence={seq_object.generated_sequences}')
+    # ftn_info=Function_info('/home/wei/PycharmProjects/Contracts/_wei/Crowdsale.sol', 'Crowdsale')
+    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken')
+    ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/EtherBox.sol', 'EtherBox')
+
+    function_dict = ftn_info.functions_dict_slither()
+
+    fdg_object = FDG(function_dict)
+    valid_sequence = {6: [[6], [5, 6]], 2: [[2]], 5: [[5]], 1: [[1], [1, 1], [5, 1]]}
+
+    seq_object = Sequence(fdg_object, [3,4], valid_sequence, 5)
+    fdg.FDG_global.control_level=2
+    fdg_object.depth_limit=2
+    seq_object.generate_sequences()
+    print(f'sequence={seq_object.generated_sequences}')
+
+
 
     per = permutations([[1, 0], [2, 7], [4, 3]])
     for i in per:
