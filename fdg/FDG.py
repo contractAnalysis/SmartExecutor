@@ -122,6 +122,8 @@ class FDG():
         self.nodes_wo_DD_edges = list(set(self.nodes).difference(set(self.nodes_w_DD_edges)))
         self.nodes_wo_DD_edges=[item for item in self.nodes_wo_DD_edges if item not in [0,1]]
 
+        self.depth_limit=5
+
 
 
 

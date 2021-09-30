@@ -1,6 +1,6 @@
 
-# SE_Guider
-<p>SE_Guider is designed to reduce the state space of symbolic execution on smart contracts .</p>
+# SE-Guider
+<p>SE-Guider is designed to reduce the state space of symbolic execution on smart contracts .</p>
 <p>It is built on top of Mythril.</p>
 
 
@@ -11,7 +11,7 @@ How to install:<br>
 Get it with docker:<br>
 
 ```bash
-$ docker pull 23278942/contract_analysis:SE_Guider_3
+$ docker pull 23278942/contract_analysis:SE-Guider-3
 ```
 
 How to run SE_Guider:<br>

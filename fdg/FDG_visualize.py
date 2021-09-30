@@ -321,7 +321,7 @@ if __name__=='__main__':
     colors = ['orange','green','purple','brown','black','olive','cyan','navy','blueviolet','purple','magenta','crimson']
 
     ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken')
-    function_list = [2, 9, 8, 10, 13]
+
 
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/Crowdsale.sol', 'Crowdsale')
     # function_list = [1,2,3]
@@ -379,15 +379,23 @@ if __name__=='__main__':
     # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/AQS.sol',
     #                          'AQS')
 
-    ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/AawMTK.sol',
-                             'AawMTK')
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/AawMTK.sol',
+    #                          'AawMTK')
+    #
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/AZT.sol',
+    #                          'AZT')
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/BKU.sol',
+    #                          'BKU')
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/Bitway.sol',
+    #                          'Bitway')
+    #
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/MultipleArbitrableTransaction.sol',
+    #                          'AppealableArbitrator')
+    #
+    ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/EtherBox.sol',
+                             'EtherBox')
 
-    ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/AZT.sol',
-                             'AZT')
-    ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/BKU.sol',
-                             'BKU')
-    ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/Bitway.sol',
-                             'Bitway')
+
     functionsDict = ftn_info.functions_dict_slither()
 
     fdg=FDG(functionsDict)

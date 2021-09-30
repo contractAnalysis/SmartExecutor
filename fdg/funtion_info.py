@@ -24,6 +24,7 @@ class Function_info():
             return {}
 
         function_dict = {}
+        functions_considered=[]
 
         i = 2 # 0 is reserved for constructor and 1 for fallback
         for f in contract.functions:
@@ -44,6 +45,7 @@ class Function_info():
             else:
                 func_hash = self.get_function_id(f.full_name)
 
+            if f.full_name in functions_considered: continue
             r_list = []
             f_r = f.all_conditional_state_variables_read()
 
@@ -68,9 +70,12 @@ class Function_info():
 
             if f.name.__eq__('fallback'):
                 function_dict['f1'] = [f.name, r_list, w_list, func_hash, 1]
+                functions_considered.append(f.name)
             else:
+
                 function_dict['f' + str(i)] = [f.full_name, r_list, w_list, func_hash,i]
                 i = i + 1
+                functions_considered.append(f.full_name)
 
         if 'f1' not in function_dict.keys():
             function_dict['f1'] = ["fallback", [], [], "None", 1]
