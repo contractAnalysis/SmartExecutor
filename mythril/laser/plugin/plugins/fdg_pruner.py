@@ -75,9 +75,7 @@ class FDG_pruner(LaserPlugin):
 
         # sequence related
         self.seq_object = None
-        self.seq_depth = -1
-        self.seq_depth_max = 0
-        self.seq_current_package = {}
+
 
         self.flag_no_sequence_generated_handle = False
         self.ftn_no_sequences_pc_list = []
@@ -173,8 +171,9 @@ class FDG_pruner(LaserPlugin):
                         self.pc_ftn[self.selector_pc[selector]] = ftn_i
 
                 # map fallback function to the max pc in pc_control_interval
-                self.ftn_pc[1]=self.pc_control_interval['pc_interval_end']
-                self.pc_ftn[self.pc_control_interval['pc_interval_end']]=1
+                if 'pc_interval_end' in self.pc_control_interval.keys():
+                    self.ftn_pc[1]=self.pc_control_interval['pc_interval_end']
+                    self.pc_ftn[self.pc_control_interval['pc_interval_end']]=1
 
         # -------------------------------------------------
         ''' 
@@ -314,10 +313,11 @@ class FDG_pruner(LaserPlugin):
                                 else:
                                     # FDG is empty
                                     # public functions of state variables, not in FDG.
-                                    identifier = self.ftn_identifiers[ftn] if ftn in self.ftn_identifiers.keys() else '0000000'
-                                    ftn_pc = self.selector_pc[identifier] if identifier in self.selector_pc.keys() else \
-                                    self.pc_control_interval['pc_interval_end']
-                                    self.ftn_special_pc.append(ftn_pc)
+                                    if len(self.FDG.nodes)==0: # we do not consider function of state variables
+                                        identifier = self.ftn_identifiers[ftn] if ftn in self.ftn_identifiers.keys() else '0000000'
+                                        ftn_pc = self.selector_pc[identifier] if identifier in self.selector_pc.keys() else \
+                                        self.pc_control_interval['pc_interval_end']
+                                        self.ftn_special_pc.append(ftn_pc)
 
 
                 # ----------------------------
