@@ -3,6 +3,9 @@ import numpy as np
 global control_level
 control_level=2
 
+global print_ftn_coverage
+print_ftn_coverage=1
+
 # control the number of symbolic transactions issued by LaserEVM
 global transaction_count
 transaction_count=50

@@ -444,6 +444,13 @@ def create_analyzer_parser(analyzer_parser: ArgumentParser):
         help="possible values:1,2,3,4. the control level for sequence generation",
     )
     options.add_argument(
+        "-p",
+        "--print-ftn-coverage",
+        type=int,
+        default=1,
+        help="0: no; 1:print function coverage",
+    )
+    options.add_argument(
         "--execution-timeout",
         type=int,
         default=86400,
@@ -701,6 +708,7 @@ def execute_command(
     elif args.command in ANALYZE_LIST:
         #@wei
         fdg.FDG_global.control_level =args.control_level
+        fdg.FDG_global.print_ftn_coverage=args.print_ftn_coverage
         analyzer = MythrilAnalyzer(
             fdg_flag=args.function_dependency_graph,  #@wei  a flag
             strategy=args.strategy,

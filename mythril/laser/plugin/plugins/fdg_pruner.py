@@ -131,9 +131,10 @@ class FDG_pruner(LaserPlugin):
 
         @symbolic_vm.laser_hook("stop_sym_exec")
         def stop_sym_exec_hook():
-            print(f'End of symbolic execution')
-            for ftn, ftn_cov in self.ftn_instructions_coverage_info.items():
-                print("{:.2f}% coverage for {}".format(ftn_cov[0], ftn))
+            if fdg.FDG_global.print_ftn_coverage==1:
+                print(f'End of symbolic execution')
+                for ftn, ftn_cov in self.ftn_instructions_coverage_info.items():
+                    print("{:.2f}% coverage for {}".format(ftn_cov[0], ftn))
 
             # # check the code coverage for each function
             # instr_cov_record_list = fdg.FDG_global.ftns_instr_cov
@@ -312,12 +313,12 @@ class FDG_pruner(LaserPlugin):
                                     self.uncovered_functions.append(self.FDG.ftn_0_to_index[ftn])
                                 else:
                                     # FDG is empty
-                                    # public functions of state variables, not in FDG.
-                                    if len(self.FDG.nodes)==0: # we do not consider function of state variables
-                                        identifier = self.ftn_identifiers[ftn] if ftn in self.ftn_identifiers.keys() else '0000000'
-                                        ftn_pc = self.selector_pc[identifier] if identifier in self.selector_pc.keys() else \
-                                        self.pc_control_interval['pc_interval_end']
-                                        self.ftn_special_pc.append(ftn_pc)
+                                    # # public functions of state variables, not in FDG.
+                                    # if len(self.FDG.nodes)==0: # we do not consider function of state variables
+                                    identifier = self.ftn_identifiers[ftn] if ftn in self.ftn_identifiers.keys() else '0000000'
+                                    ftn_pc = self.selector_pc[identifier] if identifier in self.selector_pc.keys() else \
+                                    self.pc_control_interval['pc_interval_end']
+                                    self.ftn_special_pc.append(ftn_pc)
 
 
                 # ----------------------------
