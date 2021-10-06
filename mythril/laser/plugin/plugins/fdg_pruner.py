@@ -136,24 +136,24 @@ class FDG_pruner(LaserPlugin):
                 for ftn, ftn_cov in self.ftn_instructions_coverage_info.items():
                     print("{:.2f}% coverage for {}".format(ftn_cov[0], ftn))
 
-            # # check the code coverage for each function
-            # instr_cov_record_list = fdg.FDG_global.ftns_instr_cov
-            # if len(instr_cov_record_list)>0:
-            #     instr_array = np.array(instr_cov_record_list)
-            #     for ftn, ftn_instr_cov in self.ftn_instructions_coverage_info.items():
-            #         if ftn_instr_cov[0] == 100: continue
-            #         status = instr_array[fdg.FDG_global.ftns_instr_indices[ftn]]
-            #         opcodes=self.instruction_list[fdg.FDG_global.ftns_instr_indices[ftn]]
-            #         opcode_idx_not_covered=list(np.invert(status))
-            #         opcodes_not_covered=opcodes[opcode_idx_not_covered]
-            #         print(f'{ftn},not covered: {opcodes_not_covered}')
-            #         if ftn=='mint':
-            #             print(f'mint: opcodes:{opcodes}')
-            #         if ftn == 'transferFrom':
-            #             print(f'transferFrom: opcodes:{opcodes}')
-            # all_instr_idx_not_covered=list(np.invert(instr_array))
-            # all_instr_not_covered=self.instruction_list[all_instr_idx_not_covered]
-            # print(f'contract: not covered:{all_instr_not_covered}')
+            # check the code coverage for each function
+            instr_cov_record_list = fdg.FDG_global.ftns_instr_cov
+            if len(instr_cov_record_list)>0:
+                instr_array = np.array(instr_cov_record_list)
+                for ftn, ftn_instr_cov in self.ftn_instructions_coverage_info.items():
+                    if ftn_instr_cov[0] == 100: continue
+                    status = instr_array[fdg.FDG_global.ftns_instr_indices[ftn]]
+                    opcodes=self.instruction_list[fdg.FDG_global.ftns_instr_indices[ftn]]
+                    opcode_idx_not_covered=list(np.invert(status))
+                    opcodes_not_covered=opcodes[opcode_idx_not_covered]
+                    print(f'{ftn},not covered: {opcodes_not_covered}')
+                    if ftn=='mint':
+                        print(f'mint: opcodes:{opcodes}')
+                    if ftn == 'transferFrom':
+                        print(f'transferFrom: opcodes:{opcodes}')
+            all_instr_idx_not_covered=list(np.invert(instr_array))
+            all_instr_not_covered=self.instruction_list[all_instr_idx_not_covered]
+            print(f'contract: not covered:{all_instr_not_covered}')
 
         @symbolic_vm.laser_hook("stop_sym_trans")
         def execute_stop_sym_trans_hook():
@@ -290,8 +290,8 @@ class FDG_pruner(LaserPlugin):
 
 
             if self._iteration_>=fdg.FDG_global.depth_all_ftns_reached:
-                # ----------------------------
-                # check the code coverage for each function
+            # ----------------------------
+            # check the code coverage for each function
 
                 # # no coverage check during executing a sequence. only check it at the end of sequence
                 if not (self.cur_sequence_depth_index>=1 and self.cur_sequence_depth_index<self.cur_sequence_depth_index-1):
@@ -345,17 +345,17 @@ class FDG_pruner(LaserPlugin):
                     self.ftn_special_pc.sort()
 
 
-                # ----------------------------
-                # update functions no sequences generated
-                if self.flag_no_sequence_generated_handle:
-                    self.uncovered_functions_pc_list = [self.ftn_pc[ftn_idx] for ftn_idx in self.uncovered_functions if
-                                                        ftn_idx in self.ftn_pc.keys()]
+            # ----------------------------
+            # update functions no sequences generated
+            if self.flag_no_sequence_generated_handle:
+                self.uncovered_functions_pc_list = [self.ftn_pc[ftn_idx] for ftn_idx in self.uncovered_functions if
+                                                    ftn_idx in self.ftn_pc.keys()]
 
-                    temp1=[]
-                    for f_pc in self.ftn_no_sequences_pc_list:
-                        if f_pc in self.uncovered_functions_pc_list:
-                            temp1.append(f_pc)
-                    self.ftn_no_sequences_pc_list=temp1
+                temp1=[]
+                for f_pc in self.ftn_no_sequences_pc_list:
+                    if f_pc in self.uncovered_functions_pc_list:
+                        temp1.append(f_pc)
+                self.ftn_no_sequences_pc_list=temp1
 
 
 

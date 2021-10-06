@@ -432,7 +432,7 @@ def create_analyzer_parser(analyzer_parser: ArgumentParser):
         "-t",
         "--transaction-count",
         type=int,
-        default=2,
+        default=11,
         help="Maximum number of transactions issued by laser",
     )
     #@wei
