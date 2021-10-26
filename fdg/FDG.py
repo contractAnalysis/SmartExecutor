@@ -97,18 +97,18 @@ class FDG():
                 if len(ftn_to_idx)==0:
                     continue
                 for ftn_to in ftn_to_idx:
-                    if ftn_from != ftn_to:
-                        if ftn_from in self.graph.keys():
-                            self.graph[ftn_from] += [ftn_to]
-                        else:
-                            self.graph[ftn_from] = [ftn_to]
+                    # if ftn_from != ftn_to:
+                    if ftn_from in self.graph.keys():
+                        self.graph[ftn_from] += [ftn_to]
+                    else:
+                        self.graph[ftn_from] = [ftn_to]
 
-                        if ftn_to not in self.nodes_w_DD_edges:
-                            self.nodes_w_DD_edges.append(ftn_to)
+                    if ftn_to not in self.nodes_w_DD_edges:
+                        self.nodes_w_DD_edges.append(ftn_to)
 
-                        # save edges
-                        if 'f'+str(ftn_from)+",f"+str(ftn_to) not in self.edges.keys():
-                            self.edges['f'+str(ftn_from)+",f"+str(ftn_to)]=self.index_to_label[sv_w_idx]
+                    # save edges
+                    if 'f'+str(ftn_from)+",f"+str(ftn_to) not in self.edges.keys():
+                        self.edges['f'+str(ftn_from)+",f"+str(ftn_to)]=self.index_to_label[sv_w_idx]
 
 
                 # save nodes that have edges

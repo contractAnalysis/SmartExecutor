@@ -54,7 +54,7 @@ class Sequence():
     # consider all sequences for each parent
     def _get_sequences_by_level_3_4(self, parent_groups: list, num_groups: int, ftn_idx):
         """
-        Only consider shortest sequences
+        consider all sequences
         :param parent_groups:[[2,3,5],[3,6]]
         :param num_groups : number of parents to consider
         :param ftn_idx : the child
@@ -151,6 +151,7 @@ class Sequence():
     def _merge_sequences_all_permutation(self, nested_list: list):
         """
         each permulation of nested list is created one sequence
+        the prefix of the first sequence is fixed
         :param nested_list:
         :return:
         """
@@ -176,6 +177,12 @@ class Sequence():
         return result
 
     def _merge_sequences_ordered(self, nested_list: list):
+        """
+        the prefix of the first sequence is fixed
+        :param nested_list:
+        :return:
+        """
+
         ele_num = len(nested_list)
         if ele_num == 1: return []
         # order elements in nested_list based on len
@@ -239,10 +246,56 @@ class Sequence():
                     temp = seq + [ftn_idx]
                     if temp not in collection_seq:
                         collection_seq.append(temp)
-
         return collection_seq
 
+    def _get_sequences_by_level_5(self, parents: list, ftn_idx):
+        """
+        consider all parents at one time
+        use the shortest sequences to represent parents
+        the prefix of the first sequence is not fixed
+        :param parents:[2,3,5]
+
+        :param ftn_idx : the child
+        :return:
+        """
+        collection_seq=[]
+        parents_having_seq=[]
+        p_seq_num = []  # save number of parents' shortest seqeunces
+        for p_element in parents:
+            if p_element in self.all_valid_sequences.keys():
+                p_seq_num.append(len(self.all_valid_sequences[p_element]['shortest']))
+                parents_having_seq.append(p_element)
+
+
+        # some parent has multiple shortest sequences, so need to do combination
+        p_seq_idx_list = [list(range(num)) for num in p_seq_num]
+        p_seq_index_comb = [list(com) for com in it.product(*p_seq_idx_list)]
+        for p_seq_index in p_seq_index_comb:
+            # replace each parent with its shortest sequence
+            # (remove 0: constructor is ignored.  reverse: so that parent itself is the last element in its shortest sequence )
+            sequence_list = [
+                self.all_valid_sequences[p_ele]['shortest'][index] \
+                for p_ele, index in zip(parents_having_seq, p_seq_index)]
+
+            permulation_sequence_list= permutations(sequence_list)
+            for seq_list in permulation_sequence_list:
+
+                merge_seq = self._merge_sequences(seq_list)
+
+                for seq in merge_seq:
+                    if len(seq) == 1: continue
+                    temp = seq + [ftn_idx]
+                    if temp not in collection_seq:
+                        collection_seq.append(temp)
+        return collection_seq
+
+
     def _merge_sequences(self, nested_list: list):
+        '''
+        the prefix of the first sequence is not fixed
+        :param nested_list:
+        :return:
+        '''
         ele_num = len(nested_list)
         if ele_num == 1: return []
 
@@ -273,35 +326,44 @@ class Sequence():
 
             # consider each individual parent
             parents = [p_ftn for group in parent_groups for p_ftn in group]
-            for p_ftn in parents:
-                if p_ftn not in self.all_valid_sequences.keys(): continue
-                p_sequences = self.all_valid_sequences[p_ftn]['sequences']
-                for p_seq in p_sequences:
-                    if len(p_seq) == self.fdg.depth_limit:  # consider sequences of length self.fdg.depth_limit
-                        if [[self.fdg.depth_limit, p_seq[-1]], ftn_idx] not in all_sequences_ftn:
-                            all_sequences_ftn.append([[self.fdg.depth_limit, p_seq[-1]], ftn_idx])
 
-            # consider multiple parents
-            if len(parent_groups) > 1:
-                # get all sequences for a function
+            if fdg.FDG_global.control_level == 5:
+                all_sequences_ftn=self._get_sequences_by_level_5(parents,ftn_idx)
+                if len(all_sequences_ftn)>0:
+                    self.generated_sequences[ftn_idx] = sorted(all_sequences_ftn, key=len)
 
-                for num_parents in range(1, len(parent_groups)):
-                    seq_list=[]
-                    if fdg.FDG_global.control_level == 0:
-                        seq_list=self._get_sequences_by_level_0(parent_groups, num_parents + 1, ftn_idx)
-
-                    elif fdg.FDG_global.control_level <= 2:
-                        seq_list= self._get_sequences_by_level_1_2(parent_groups, num_parents + 1, ftn_idx)
-                    else:
-                        seq_list= self._get_sequences_by_level_3_4(parent_groups, num_parents + 1, ftn_idx)
-                    for seq in seq_list:
-                        if seq not in all_sequences_ftn:
-                            all_sequences_ftn.append(seq)
-            # check if there are generated sequences
-            if len(all_sequences_ftn) > 0:
-                self.generated_sequences[ftn_idx] = sorted(all_sequences_ftn, key=len)
+                else:self.ftn_no_sequences.append(ftn_idx)
             else:
-                self.ftn_no_sequences.append(ftn_idx)
+                # consider each individual parent
+                for p_ftn in parents:
+                    if p_ftn not in self.all_valid_sequences.keys(): continue
+                    p_sequences = self.all_valid_sequences[p_ftn]['sequences']
+                    for p_seq in p_sequences:
+                        if len(p_seq) == self.fdg.depth_limit:  # consider sequences of length self.fdg.depth_limit
+                            if [[self.fdg.depth_limit, p_seq[-1]], ftn_idx] not in all_sequences_ftn:
+                                all_sequences_ftn.append([[self.fdg.depth_limit, p_seq[-1]], ftn_idx])
+
+                # consider multiple parents
+                if len(parent_groups) > 1:
+                    # get all sequences for a function
+
+                    for num_parents in range(1, len(parent_groups)):
+                        seq_list=[]
+                        if fdg.FDG_global.control_level == 0:  # the prefix of the first sequence is not fixed
+                            seq_list=self._get_sequences_by_level_0(parent_groups, num_parents + 1, ftn_idx)
+
+                        elif fdg.FDG_global.control_level <= 2:
+                            seq_list= self._get_sequences_by_level_1_2(parent_groups, num_parents + 1, ftn_idx)
+                        else:
+                            seq_list= self._get_sequences_by_level_3_4(parent_groups, num_parents + 1, ftn_idx)
+                        for seq in seq_list:
+                            if seq not in all_sequences_ftn:
+                                all_sequences_ftn.append(seq)
+                # check if there are generated sequences
+                if len(all_sequences_ftn) > 0:
+                    self.generated_sequences[ftn_idx] = sorted(all_sequences_ftn, key=len)
+                else:
+                    self.ftn_no_sequences.append(ftn_idx)
 
         if len(self.generated_sequences.keys()) == 0:
             return False
@@ -425,20 +487,20 @@ class Sequence():
 
 
 if __name__ == '__main__':
-    # ftn_info=Function_info('/home/wei/PycharmProjects/Contracts/_wei/Crowdsale.sol', 'Crowdsale')
-    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken')
-    ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/EtherBox.sol', 'EtherBox')
-
-    function_dict = ftn_info.functions_dict_slither()
-
-    fdg_object = FDG(function_dict)
-    valid_sequence = {6: [[6], [5, 6]], 2: [[2]], 5: [[5]], 1: [[1], [1, 1], [5, 1]]}
-
-    seq_object = Sequence(fdg_object, [3,4], valid_sequence, 5)
-    fdg.FDG_global.control_level=2
-    fdg_object.depth_limit=2
-    seq_object.generate_sequences()
-    print(f'sequence={seq_object.generated_sequences}')
+    # # ftn_info=Function_info('/home/wei/PycharmProjects/Contracts/_wei/Crowdsale.sol', 'Crowdsale')
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken')
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/EtherBox.sol', 'EtherBox')
+    #
+    # function_dict = ftn_info.functions_dict_slither()
+    #
+    # fdg_object = FDG(function_dict)
+    # valid_sequence = {6: [[6], [5, 6]], 2: [[2]], 5: [[5]], 1: [[1], [1, 1], [5, 1]]}
+    #
+    # seq_object = Sequence(fdg_object, [3,4], valid_sequence, 5)
+    # fdg.FDG_global.control_level=2
+    # fdg_object.depth_limit=2
+    # seq_object.generate_sequences()
+    # print(f'sequence={seq_object.generated_sequences}')
 
 
 
