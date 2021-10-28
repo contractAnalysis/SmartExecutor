@@ -441,8 +441,17 @@ def create_analyzer_parser(analyzer_parser: ArgumentParser):
         "--control-level",
         type=int,
         default=2,
-        help="possible values:1,2,3,4. the control level for sequence generation",
+        help="possible values:0,1,2,3,4,5,6,7,8. the control level for sequence generation",
     )
+    #@wei
+    options.add_argument(
+        "-snl",
+        "--sequence-number-limit",
+        type=int,
+        default=5,
+        help="limit the number of seqeunces generated for each function that will be assigned to be executed.",
+    )
+
     options.add_argument(
         "-p",
         "--print-ftn-coverage",
@@ -708,6 +717,7 @@ def execute_command(
     elif args.command in ANALYZE_LIST:
         #@wei
         fdg.FDG_global.control_level =args.control_level
+        fdg.FDG_global.num_seq_limit = args.sequence_number_limit
         fdg.FDG_global.print_ftn_coverage=args.print_ftn_coverage
         analyzer = MythrilAnalyzer(
             fdg_flag=args.function_dependency_graph,  #@wei  a flag

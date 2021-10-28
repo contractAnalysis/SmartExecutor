@@ -75,6 +75,7 @@ class FDG():
         # get all edges
         self.nodes = list(range(self.num_ftn))
         self.edges={}
+        self.edges_no_f=[] # used for topological ordering of nodes in sequence generation
         self.nodes_wo_DD_edges=[]
         self.nodes_w_DD_edges=[]
         self.start_nodes=[]
@@ -109,7 +110,8 @@ class FDG():
                     # save edges
                     if 'f'+str(ftn_from)+",f"+str(ftn_to) not in self.edges.keys():
                         self.edges['f'+str(ftn_from)+",f"+str(ftn_to)]=self.index_to_label[sv_w_idx]
-
+                    if [ftn_from, ftn_to] not in self.edges_no_f:
+                        self.edges_no_f.append([ftn_from, ftn_to])
 
                 # save nodes that have edges
                 if ftn_from not in self.nodes_w_DD_edges:

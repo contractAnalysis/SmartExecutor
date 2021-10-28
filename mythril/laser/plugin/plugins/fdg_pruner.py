@@ -252,7 +252,8 @@ class FDG_pruner(LaserPlugin):
                         else:
                             if self.flag_sequence_handle:
                                 # save states at sequence execution phase
-                                self.OS_states_sequence_execution_phase.append(copy(state))
+                                if self.cur_sequence_depth_index==self.cur_sequence_depth-1:
+                                    self.OS_states_sequence_execution_phase.append(copy(state))
 
             # ----------------------------
             # compute the depth (<=4)
@@ -424,7 +425,7 @@ class FDG_pruner(LaserPlugin):
             if self.flag_sequence_handle:
                 if not self.seq_object:
                     # create an Sequence object
-                    self.seq_object = Sequence(self.FDG, self.uncovered_functions, self.sequences, 5)
+                    self.seq_object = Sequence(self.FDG, self.uncovered_functions, self.sequences, fdg.FDG_global.num_seq_limit)
                     self.seq_object.generate_sequences()
 
                     self.ftn_no_sequences_pc_list=[self.ftn_pc[ftn_idx] for ftn_idx in self.seq_object.ftn_no_sequences if ftn_idx in self.ftn_pc.keys()]
@@ -435,7 +436,7 @@ class FDG_pruner(LaserPlugin):
                     # get a next sequence
                     self.cur_sequence = self.seq_object.get_one_sequence(self.uncovered_functions)
                     self.cur_sequence_depth = len(self.cur_sequence)
-                    # print(f'execute the sequence:{self.cur_sequence}')
+                    print(f'execute the sequence:{self.cur_sequence}')
                     if self.cur_sequence_depth == 0: # end the sequence execution phase
                         self.cur_sequence_depth_index=0
                         self.flag_sequence_handle = False

@@ -3,6 +3,9 @@ import numpy as np
 global control_level
 control_level=2
 
+global num_seq_limit
+num_seq_limit=5
+
 global print_ftn_coverage
 print_ftn_coverage=1
 
