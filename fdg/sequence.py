@@ -5,9 +5,8 @@ import itertools as it
 
 import fdg
 from fdg import lists_merge, utils
-from fdg.FDG import FDG
-from fdg.funtion_info import Function_info
 
+import fdg.FDG_global
 """
 sequence generation level:
 0:
@@ -17,36 +16,77 @@ sequence generation level:
 4:
 5: consider all parents once, shortest sequences, the first sequence is not fixed
 6: consider all parents once, shortest sequences, topological sorting
-
+7:parent subsets, shortest sequeces, topological sorting
+8:parent subsets, shortest sequeces, topological sorting, randomly select m sequences for each target function
+9: randomly select parents, shortest sequeces, topological sorting
 """
 
 
 class Sequence():
-    def __init__(self, fdg=None, ftn_idx_not_covered=[], valid_sequences={}, num_seq_limit=5):
-        self.fdg = fdg
-        self.ftn_idx_not_covered = ftn_idx_not_covered  # target function
-        self.all_valid_sequences = {}
-        # initialize all_valid_sequences
-        for key, value in valid_sequences.items():
-            if len(value) > 0:
-                ele_size = [len(item) for item in value]
-                min_size = min(ele_size)
-                shortest_seq = [item for item in value if len(item) == min_size]
-                self.all_valid_sequences[key] = {'sequences': value, 'seq_num': len(value), 'shortest': shortest_seq,
-                                                 'shortest_depth': min_size}
-            else:
-                self.all_valid_sequences[key] = {'sequences': [], 'seq_num': 0, 'shortest': [], 'shortest_depth': 0}
-
+    def __init__(self, fdg_=None, ftn_idx_not_covered=[], valid_sequences={}, num_seq_limit=5):
+        self.fdg = fdg_
+        self.uncovered_ftn_idx = ftn_idx_not_covered  # target function
         self.num_seq_limit = num_seq_limit
 
-        self.generated_sequences = {}
-        self.generated_sequences_assignment = []
+
+
+        self.valid_sequences_given=valid_sequences
+        self.valid_sequences_given_transformed={}  # replace self.all_valid_sequences
+
+        self.assignment_sequence=[]
+        self.sequences_generated= []
+        self.sequences_generated_cur= {}
+
+        self.uncovered_ftn_idx=ftn_idx_not_covered
+        self.uncovered_ftn_idx_waiting=[]
+
+        # transform received valid_sequences:
+        for key, value in valid_sequences.items():
+            self.valid_sequences_given_transformed[key]=self._valid_sequence_transform(value)
+
+
+
+
+
         self.ftn_idx_to_column_idx = {}
         self.column_idx_to_ftn_idx = {}
         self.package_list = []
 
         self.ftn_no_sequences = []
-        self.flag_ftn_no_sequences = False
+
+        
+        self.flag_all_ftn_considered=False
+        # ==================================
+        # prepare data
+        if fdg.FDG_global.control_level >=6 and fdg.FDG_global.control_level <=9:
+            # remove cycles in edge list
+            edges_without_cycles = []
+            edges_cycles = []
+            for edge in self.fdg.edges_no_f:
+                if edge[0] == edge[1]:
+                    continue
+                if [edge[1], edge[0]] in self.fdg.edges_no_f:
+                    edges_cycles.append(edge)
+                    continue
+                edges_without_cycles.append(edge)
+
+            # get node pairs that violate topological rules
+            self.rules = {}
+            for edge in edges_without_cycles:
+                if edge[1] in self.rules.keys():
+                    if edge[0] not in self.rules[edge[1]]:
+                        self.rules[edge[1]].append(edge[0])
+                else:
+                    self.rules[edge[1]] = [edge[0]]
+
+            # save cycles in dict
+            self.cycles_dict = {}
+            for edge in edges_cycles:
+                if edge[0] not in self.cycles_dict.keys():
+                    self.cycles_dict[edge[0]] = [edge[1]]
+                else:
+                    if edge[1] not in self.cycles_dict[edge[0]]:
+                        self.cycles_dict[edge[0]].append(edge[1])
 
     def _get_label_parent(self, ftn_idx) -> dict:
         """
@@ -62,6 +102,33 @@ class Sequence():
             ftn_write = np.where(ftn_write_ary >= 0)[0]
             l_p_dict[sv] = [ftn_i for ftn_i in ftn_write if ftn_i != ftn_idx]
         return l_p_dict
+    def _get_parent(self, ftn_idx) -> dict:
+        """
+        get parents 
+        :param ftn_idx:
+        :return:[parent idx]
+        """
+       
+        parents=[]
+        sv_read_ary = self.fdg.sv_read[ftn_idx, :]
+        sv_read = sv_read_ary[sv_read_ary >= 0]
+        for sv in sv_read:
+            ftn_write_ary = self.fdg.sv_write[:, sv]
+            ftn_write = np.where(ftn_write_ary >= 0)[0]
+            parents+=[ftn_i for ftn_i in ftn_write if ftn_i != ftn_idx]
+        
+        return list(set(parents))
+    def _valid_sequence_transform(self,sequence_of_sequences:list):
+        if len(sequence_of_sequences) > 0:
+            ele_size = [len(item) for item in sequence_of_sequences]
+            min_size = min(ele_size)
+            shortest_seq = [item for item in sequence_of_sequences if len(item) == min_size]
+            return {'sequences': sequence_of_sequences, 'seq_num': len(sequence_of_sequences),
+                                                           'shortest': shortest_seq,
+                                                           'shortest_depth': min_size}
+        else:
+            return  {'sequences': [], 'seq_num': 0, 'shortest': [],
+                                                           'shortest_depth': 0}
 
     # consider all sequences for each parent
     def _get_sequences_by_level_3_4(self, parent_groups: list, num_groups: int, ftn_idx):
@@ -83,8 +150,8 @@ class Sequence():
 
             p_seq_num = []
             for p_element in comb:
-                if p_element in self.all_valid_sequences.keys():
-                    p_seq_num.append(self.all_valid_sequences[p_element]['seq_num'])
+                if p_element in self.valid_sequences_given_transformed.keys():
+                    p_seq_num.append(self.valid_sequences_given_transformed[p_element]['seq_num'])
                 else:
                     p_seq_num.append(0)
 
@@ -98,7 +165,7 @@ class Sequence():
                 # replace each parent with its shortest sequence
                 # (remove 0: constructor is ignored.  reverse: so that parent itself is the last element in its shortest sequence )
                 sequence_list = [
-                    self.all_valid_sequences[p_ele]['sequences'][index] \
+                    self.valid_sequences_given_transformed[p_ele]['sequences'][index] \
                     for p_ele, index in zip(comb, p_seq_index)]
                 if fdg.FDG_global.control_level == 3:
                     merge_seq = self._merge_sequences_ordered(sequence_list)
@@ -129,8 +196,8 @@ class Sequence():
         for comb in parent_combinations:
             p_seq_num = []
             for p_element in comb:
-                if p_element in self.all_valid_sequences.keys():
-                    p_seq_num.append(len(self.all_valid_sequences[p_element]['shortest']))
+                if p_element in self.valid_sequences_given_transformed.keys():
+                    p_seq_num.append(len(self.valid_sequences_given_transformed[p_element]['shortest']))
                 else:
                     p_seq_num.append(0)
 
@@ -144,7 +211,7 @@ class Sequence():
                 # replace each parent with its shortest sequence
                 # (remove 0: constructor is ignored.  reverse: so that parent itself is the last element in its shortest sequence )
                 sequence_list = [
-                    self.all_valid_sequences[p_ele]['shortest'][index] \
+                    self.valid_sequences_given_transformed[p_ele]['shortest'][index] \
                     for p_ele, index in zip(comb, p_seq_index)]
 
                 if fdg.FDG_global.control_level == 1:
@@ -258,8 +325,8 @@ class Sequence():
         for comb in parent_combinations:
             p_seq_num = []
             for p_element in comb:
-                if p_element in self.all_valid_sequences.keys():
-                    p_seq_num.append(len(self.all_valid_sequences[p_element]['shortest']))
+                if p_element in self.valid_sequences_given_transformed.keys():
+                    p_seq_num.append(len(self.valid_sequences_given_transformed[p_element]['shortest']))
                 else:
                     p_seq_num.append(0)
 
@@ -273,7 +340,7 @@ class Sequence():
                 # replace each parent with its shortest sequence
                 # (remove 0: constructor is ignored.  reverse: so that parent itself is the last element in its shortest sequence )
                 sequence_list = [
-                    self.all_valid_sequences[p_ele]['shortest'][index] \
+                    self.valid_sequences_given_transformed[p_ele]['shortest'][index] \
                     for p_ele, index in zip(comb, p_seq_index)]
                 merge_seq = self._merge_sequences(sequence_list)
 
@@ -283,6 +350,7 @@ class Sequence():
                     if temp not in collection_seq:
                         collection_seq.append(temp)
         return collection_seq
+
 
     # consider all parents at one time, prefix of the first sequence is not fixed
     def _get_sequences_by_level_5(self, parents: list, ftn_idx):
@@ -296,28 +364,11 @@ class Sequence():
         :return:
         """
         collection_seq=[]
-        parents_having_seq=[]
-        p_seq_num = []  # save number of parents' shortest seqeunces
-        for p_element in parents:
-            if p_element in self.all_valid_sequences.keys():
-                p_seq_num.append(len(self.all_valid_sequences[p_element]['shortest']))
-                parents_having_seq.append(p_element)
-
-        # some parent has multiple shortest sequences, so need to do combination
-        p_seq_idx_list = [list(range(num)) for num in p_seq_num]
-        p_seq_index_comb = [list(com) for com in it.product(*p_seq_idx_list)]
-        for p_seq_index in p_seq_index_comb:
-            # replace each parent with its shortest sequence
-            # (remove 0: constructor is ignored.  reverse: so that parent itself is the last element in its shortest sequence )
-            sequence_list = [
-                self.all_valid_sequences[p_ele]['shortest'][index] \
-                for p_ele, index in zip(parents_having_seq, p_seq_index)]
-
-            permulation_sequence_list= permutations(sequence_list)
+        parent_sequences = self._get_parent_sequnces(parents)
+        for sequence in parent_sequences:
+            permulation_sequence_list= permutations(sequence)
             for seq_list in permulation_sequence_list:
-
                 merge_seq = self._merge_sequences(seq_list)
-
                 for seq in merge_seq:
                     if len(seq) == 1: continue
                     temp = seq + [ftn_idx]
@@ -333,82 +384,15 @@ class Sequence():
         topological sorting in sequence merging process
         :return:
         """
-        parents_having_seq = []
-        p_seq_num = []  # save number of parents' shortest seqeunces
-        for p_element in parents:
-            if p_element in self.all_valid_sequences.keys():
-                p_seq_num.append(len(self.all_valid_sequences[p_element]['shortest']))
-                parents_having_seq.append(p_element)
+        collection_seq=[]
+        parent_sequences = self._get_parent_sequnces(parents)
+        for p_seq in parent_sequences:
+            sequences = self._get_topological_sequences(p_seq, ftn_idx)
+            for seq in sequences:
+                if seq not in collection_seq:
+                    collection_seq.append(seq)
+        return collection_seq
 
-        # some parent has multiple shortest sequences, so need to do combination
-        sequences = [] # save generated sequences
-        p_seq_idx_list = [list(range(num)) for num in p_seq_num]
-        p_seq_index_comb = [list(com) for com in it.product(*p_seq_idx_list)]
-        for p_seq_index in p_seq_index_comb:
-            # replace each parent with its shortest sequence
-            # (remove 0: constructor is ignored.  reverse: so that parent itself is the last element in its shortest sequence )
-            sequence_list = [
-                self.all_valid_sequences[p_ele]['shortest'][index] \
-                for p_ele, index in zip(parents_having_seq, p_seq_index)]
-
-            # get unique nodes
-            unique_elements = []
-            for seq in sequence_list:
-                for s in seq:
-                    if s not in unique_elements:
-                        unique_elements.append(s)
-
-            # combine nodes in a cycle
-            super_elements = []
-            while len(unique_elements) > 0:
-                if unique_elements[0] in self.cycles_dict.keys():
-                    values_e = self.cycles_dict[unique_elements[0]]
-                    super_e = []
-                    for v_e in values_e:
-                        if v_e in unique_elements:
-                            super_e.append(v_e)
-                            unique_elements.remove(v_e)
-                    super_e.append(unique_elements[0])
-                    unique_elements.remove(unique_elements[0])
-
-                    if super_e not in super_elements:
-                        super_elements.append(super_e)
-                else:
-                    super_elements.append([unique_elements[0]])
-                    unique_elements.remove(unique_elements[0])
-
-            permutation = permutations(super_elements)
-            flag = False
-            for ele in permutation:
-                ele_list = list(ele)
-                i = 0
-                flag = False
-                while i < len(super_elements) - 1:
-                    rest_elements = [e for k, e_list in enumerate(ele) if k > i for e in e_list]
-                    not_appear = [self.rules[e] for e in ele_list[i] if e in self.rules.keys()]
-                    not_appear_list = [e for e_list in not_appear for e in e_list]
-                    for e in rest_elements:
-                        if e in not_appear_list:
-                            flag = True
-                            break
-                    if flag:
-                        break
-                    else:
-                        i += 1
-                if not flag:
-                    valid_seq=[e for e_list in ele_list for e in e_list]
-                    valid_seq.append(ftn_idx)
-                    if valid_seq not in sequences:
-                        sequences.append(valid_seq)
-
-        final_sequences=[]
-        for seq in sequences:
-            if len(seq) == 1: continue
-            first_e=[[1,seq[0]]]
-            seq.remove(seq[0])
-            final_sequences.append(first_e+seq)
-
-        return final_sequences
     # topological sorting, consider parent subsets
     def _get_sequences_by_level_7(self,parent_groups: list, num_groups: int, ftn_idx):
         """
@@ -422,84 +406,14 @@ class Sequence():
 
         collection_seq = []  # save the sequences generated
         for comb in parent_combinations:
-            p_seq_num = []
-            for p_element in comb:
-                if p_element in self.all_valid_sequences.keys():
-                    p_seq_num.append(len(self.all_valid_sequences[p_element]['shortest']))
-                else:
-                    p_seq_num.append(0)
+            parent_sequences = self._get_parent_sequnces(comb)
+            for p_seq in parent_sequences:
+                sequences = self._get_topological_sequences(p_seq, ftn_idx)
+                for seq in sequences:
+                    if seq not in collection_seq:
+                        collection_seq.append(seq)
 
-            # if one parent does not have sequence, ignore this parent combination
-            if p_seq_num.count(0) > 0: continue
-
-            # some parent has multiple shortest sequences, so need to do combination
-            p_seq_idx_list = [list(range(num)) for num in p_seq_num]
-            p_seq_index_comb = [list(com) for com in it.product(*p_seq_idx_list)]
-            for p_seq_index in p_seq_index_comb:
-                # replace each parent with its shortest sequence
-                # (remove 0: constructor is ignored.  reverse: so that parent itself is the last element in its shortest sequence )
-                sequence_list = [
-                    self.all_valid_sequences[p_ele]['shortest'][index] \
-                    for p_ele, index in zip(comb, p_seq_index)]
-
-                # get unique nodes
-                unique_elements = []
-                for seq in sequence_list:
-                    for s in seq:
-                        if s not in unique_elements:
-                            unique_elements.append(s)
-
-                # combine nodes in a cycle
-                super_elements = []
-                while len(unique_elements) > 0:
-                    if unique_elements[0] in self.cycles_dict.keys():
-                        values_e =  self.cycles_dict[unique_elements[0]]
-                        super_e = []
-                        for v_e in values_e:
-                            if v_e in unique_elements:
-                                super_e.append(v_e)
-                                unique_elements.remove(v_e)
-                        super_e.append(unique_elements[0])
-                        unique_elements.remove(unique_elements[0])
-
-                        if super_e not in super_elements:
-                            super_elements.append(super_e)
-                    else:
-                        super_elements.append([unique_elements[0]])
-                        unique_elements.remove(unique_elements[0])
-
-                permutation = permutations(super_elements)
-                flag = False
-                for ele in permutation:
-                    ele_list = list(ele)
-                    i = 0
-                    flag = False
-                    while i < len(super_elements) - 1:
-                        rest_elements = [e for k, e_list in enumerate(ele) if k > i for e in e_list]
-                        not_appear = [ self.rules[e] for e in ele_list[i] if e in  self.rules.keys()]
-                        not_appear_list = [e for e_list in not_appear for e in e_list]
-                        for e in rest_elements:
-                            if e in not_appear_list:
-                                flag = True
-                                break
-                        if flag:
-                            break
-                        else:
-                            i += 1
-                    if not flag:
-                        valid_seq=[e for e_list in ele_list for e in e_list]
-                        valid_seq.append(ftn_idx)
-                        if valid_seq not in collection_seq:
-                            collection_seq.append(valid_seq)
-
-        final_sequences=[]
-        for seq in collection_seq:
-            if len(seq) == 1: continue
-            first_e=[[1,seq[0]]]
-            seq.remove(seq[0])
-            final_sequences.append(first_e+seq)
-
-        return final_sequences
+        return collection_seq
 
         # topological sorting, consider parent subsets
 
@@ -517,124 +431,195 @@ class Sequence():
 
         collection_seq = []  # save the sequences generated
         for comb in parent_combinations:
-            p_seq_num = []
-            for p_element in comb:
-                if p_element in self.all_valid_sequences.keys():
-                    p_seq_num.append(len(self.all_valid_sequences[p_element]['shortest']))
+            parent_sequences = self._get_parent_sequnces(comb)
+            for p_seq in parent_sequences:
+                sequences=self._get_topological_sequences(p_seq, ftn_idx)
+                for seq in sequences:
+                    if seq not in collection_seq:
+                        collection_seq.append(seq)
+
+        final_sequences = []
+        if len(collection_seq)>self.num_seq_limit:
+            index=list(range(len(collection_seq)))
+            chosen_index = np.random.choice(index, self.num_seq_limit, replace=False)
+            final_sequences=[seq for idx, seq in enumerate(collection_seq) if idx in chosen_index]
+
+        return final_sequences
+
+    # topological sorting, randomly select parents multiple times
+    def _get_sequences_by_level_9(self, parents:list, ftn_idx):
+        """
+        randomly select parents, and select multiple times
+        use shortest sequences to represent parents
+        topological sorting in sequence merging process
+        :return:
+        """
+
+        # randomly select parents multiple times
+        p_len=len(parents)
+        p_np_array=np.array(parents)
+        p_subsets_selected=[]
+        for i in range(self.num_seq_limit):
+            selection=[]
+            for j in range(p_len):
+                selection.append(np.random.choice([True, False]))
+            re=list(p_np_array[selection])
+            if len(re)==0: # randomly select 2. make sure there is no parent selected
+                re=list(np.random.choice(parents,size=2,replace=False))
+            p_subsets_selected.append(re)
+
+        collection_seq = []
+        # convert each parent subset to sequences
+        for p_comb in p_subsets_selected:
+            #--------------------------
+            # the case only one parent selected
+            if len(p_comb)==1:
+                collection_seq=self._get_sequence_1_parent_considered(p_comb[0],ftn_idx)
+                continue
+
+            # --------------------------
+            # the case of more than 1 parent selected
+            parent_sequences=self._get_parent_sequnces(p_comb)
+            for p_seq in parent_sequences:
+                sequences = self._get_topological_sequences(p_seq, ftn_idx)
+                for seq in sequences:
+                    if seq not in collection_seq:
+                        collection_seq.append(seq)
+        return collection_seq
+
+
+    def _get_topological_sequences(self,sequence_list:list,ftn_idx):
+        collection_seq=[]
+        # get unique nodes
+        unique_elements = []
+        for seq in sequence_list:
+            for s in seq:
+                if s not in unique_elements:
+                    unique_elements.append(s)
+
+        # combine nodes in a cycle
+        super_elements = []
+        while len(unique_elements) > 0:
+            if unique_elements[0] in self.cycles_dict.keys():
+                values_e = self.cycles_dict[unique_elements[0]]
+                super_e = []
+                for v_e in values_e:
+                    if v_e in unique_elements:
+                        super_e.append(v_e)
+                        unique_elements.remove(v_e)
+                super_e.append(unique_elements[0])
+                unique_elements.remove(unique_elements[0])
+
+                if super_e not in super_elements:
+                    super_elements.append(super_e)
+            else:
+                super_elements.append([unique_elements[0]])
+                unique_elements.remove(unique_elements[0])
+
+        permutation = permutations(super_elements)
+        flag = False
+        for ele in permutation:
+            ele_list = list(ele)
+            i = 0
+            flag = False
+            while i < len(super_elements) - 1:
+                rest_elements = [e for k, e_list in enumerate(ele) if k > i for e in e_list]
+                not_appear = [self.rules[e] for e in ele_list[i] if e in self.rules.keys()]
+                not_appear_list = [e for e_list in not_appear for e in e_list]
+                for e in rest_elements:
+                    if e in not_appear_list:
+                        flag = True
+                        break
+                if flag:
+                    break
                 else:
-                    p_seq_num.append(0)
+                    i += 1
+            if not flag:
+                valid_seq = [e for e_list in ele_list for e in e_list]
+                valid_seq.append(ftn_idx)
+                if valid_seq not in collection_seq:
+                    collection_seq.append(valid_seq)
 
-            # if one parent does not have sequence, ignore this parent combination
-            if p_seq_num.count(0) > 0: continue
-
-            # some parent has multiple shortest sequences, so need to do combination
-            p_seq_idx_list = [list(range(num)) for num in p_seq_num]
-            p_seq_index_comb = [list(com) for com in it.product(*p_seq_idx_list)]
-            for p_seq_index in p_seq_index_comb:
-                # replace each parent with its shortest sequence
-                # (remove 0: constructor is ignored.  reverse: so that parent itself is the last element in its shortest sequence )
-                sequence_list = [
-                    self.all_valid_sequences[p_ele]['shortest'][index] \
-                    for p_ele, index in zip(comb, p_seq_index)]
-
-                # get unique nodes
-                unique_elements = []
-                for seq in sequence_list:
-                    for s in seq:
-                        if s not in unique_elements:
-                            unique_elements.append(s)
-
-                # combine nodes in a cycle
-                super_elements = []
-                while len(unique_elements) > 0:
-                    if unique_elements[0] in self.cycles_dict.keys():
-                        values_e = self.cycles_dict[unique_elements[0]]
-                        super_e = []
-                        for v_e in values_e:
-                            if v_e in unique_elements:
-                                super_e.append(v_e)
-                                unique_elements.remove(v_e)
-                        super_e.append(unique_elements[0])
-                        unique_elements.remove(unique_elements[0])
-
-                        if super_e not in super_elements:
-                            super_elements.append(super_e)
-                    else:
-                        super_elements.append([unique_elements[0]])
-                        unique_elements.remove(unique_elements[0])
-
-                permutation = permutations(super_elements)
-                flag = False
-                for ele in permutation:
-                    ele_list = list(ele)
-                    i = 0
-                    flag = False
-                    while i < len(super_elements) - 1:
-                        rest_elements = [e for k, e_list in enumerate(ele) if k > i for e in e_list]
-                        not_appear = [self.rules[e] for e in ele_list[i] if e in self.rules.keys()]
-                        not_appear_list = [e for e_list in not_appear for e in e_list]
-                        for e in rest_elements:
-                            if e in not_appear_list:
-                                flag = True
-                                break
-                        if flag:
-                            break
-                        else:
-                            i += 1
-                    if not flag:
-                        valid_seq = [e for e_list in ele_list for e in e_list]
-                        valid_seq.append(ftn_idx)
-                        if valid_seq not in collection_seq:
-                            collection_seq.append(valid_seq)
-
+        # form the final sequence, with the first element replaced by a list of length 2:
+        # [depth, first element]
         final_sequences = []
         for seq in collection_seq:
             if len(seq) == 1: continue
             first_e = [[1, seq[0]]]
             seq.remove(seq[0])
             final_sequences.append(first_e + seq)
-        if len(final_sequences)>self.num_seq_limit:
-            index=list(range(len(final_sequences)))
-            chosen_index = np.random.choice(index, 5, replace=False)
-            final_sequences=[seq for idx, seq in enumerate(final_sequences) if idx in chosen_index]
-
         return final_sequences
 
+    def _get_parent_sequnces(self,parents:list):
+        parent_sequences=[]
+        p_seq_num = []
+        for p_element in parents:
+            if p_element in self.valid_sequences_given_transformed.keys():
+                p_seq_num.append(len(self.valid_sequences_given_transformed[p_element]['shortest']))
+            else:
+                p_seq_num.append(0)
+
+        # if one parent does not have sequence, ignore this parent combination
+        if p_seq_num.count(0) > 0:
+            return []
+
+        # some parent has multiple shortest sequences, so need to do combination
+        p_seq_idx_list = [list(range(num)) for num in p_seq_num]
+        p_seq_index_comb = [list(com) for com in it.product(*p_seq_idx_list)]
+        for p_seq_index in p_seq_index_comb:
+            # replace each parent with its shortest sequence
+            # (remove 0: constructor is ignored.  reverse: so that parent itself is the last element in its shortest sequence )
+            sequence_list = [
+                self.valid_sequences_given_transformed[p_ele]['shortest'][index] \
+                for p_ele, index in zip(parents, p_seq_index)]
+            parent_sequences.append(sequence_list)
+
+        return parent_sequences
+
+    def _get_sequence_1_parent_considered(self,parent_idx:int,ftn_idx:int):
+        collection_seq=[]
+        if parent_idx not in self.valid_sequences_given_transformed.keys(): return []
+        p_sequences = self.valid_sequences_given_transformed[parent_idx]['sequences']
+        for p_seq in p_sequences:
+            if len(p_seq) == self.fdg.depth_limit:  # consider sequences of length self.fdg.depth_limit
+                if [[self.fdg.depth_limit, parent_idx], ftn_idx] not in collection_seq:
+                    collection_seq.append([[self.fdg.depth_limit, parent_idx], ftn_idx])
+        return collection_seq
+
     def generate_sequences(self):
-        # ==================================
-        # prepare data
-        if fdg.FDG_global.control_level==6 or fdg.FDG_global.control_level==7 or fdg.FDG_global.control_level==8:
-            # remove cycles in edge list
-            edges_without_cycles = []
-            edges_cycles = []
-            for edge in self.fdg.edges_no_f:
-                if edge[0] == edge[1]:
-                    continue
-                if [edge[1], edge[0]] in self.fdg.edges_no_f:
-                    edges_cycles.append(edge)
-                    continue
-                edges_without_cycles.append(edge)
-
-            # get node pairs that violate topological rules
-            self.rules = {}
-            for edge in edges_without_cycles:
-                if edge[1] in self.rules.keys():
-                    if edge[0] not in self.rules[edge[1]]:
-                        self.rules[edge[1]].append(edge[0])
+        self.sequences_generated_cur= {}
+        # delay the sequence generation for functions whose parents are also uncovered.
+        if len(self.uncovered_ftn_idx)>0:
+            if self.flag_all_ftn_considered:
+                return
+            if len(self.uncovered_ftn_idx_waiting)>0:
+                self.uncovered_ftn_idx=self.uncovered_ftn_idx_waiting
+                self.uncovered_ftn_idx_waiting=[]
+                
+            ftn_to_generate_seq = []            
+            for ftn_idx in self.uncovered_ftn_idx:
+                parents=self._get_parent(ftn_idx)
+                if len(set(parents).intersection(set(self.uncovered_ftn_idx)))>0:
+                    self.uncovered_ftn_idx_waiting.append(ftn_idx)
                 else:
-                    self.rules[edge[1]] = [edge[0]]
-
-            # save cycles in dict
-            self.cycles_dict = {}
-            for edge in edges_cycles:
-                if edge[0] not in self.cycles_dict.keys():
-                    self.cycles_dict[edge[0]] = [edge[1]]
-                else:
-                    if edge[1] not in self.cycles_dict[edge[0]]:
-                        self.cycles_dict[edge[0]].append(edge[1])
+                    ftn_to_generate_seq.append(ftn_idx)
+                    
+            if len(ftn_to_generate_seq)==0:# 
+                self.uncovered_ftn_idx=self.uncovered_ftn_idx_waiting
+                self.uncovered_ftn_idx_waiting=[]
+                self.flag_all_ftn_considered=True
+            else:
+                self.uncovered_ftn_idx=ftn_to_generate_seq
+                if len(self.uncovered_ftn_idx_waiting)==0:
+                    self.flag_all_ftn_considered=True
+                
+        else: return # no need to generate sequence
+            
+        
+        
         #==================================
         # get all sequences for each uncovered function
-        for ftn_idx in self.ftn_idx_not_covered:
+        for ftn_idx in self.uncovered_ftn_idx:
             # get labels and parents
             l_p_dict = self._get_label_parent(ftn_idx)
 
@@ -653,31 +638,42 @@ class Sequence():
                 # the first sequence is not fixed
                 all_sequences_ftn=self._get_sequences_by_level_5(parents,ftn_idx)
                 if len(all_sequences_ftn)>0:
-                    self.generated_sequences[ftn_idx] = sorted(all_sequences_ftn, key=len)
+                    self.sequences_generated_cur[ftn_idx] = sorted(all_sequences_ftn, key=len)
                 else:self.ftn_no_sequences.append(ftn_idx)
+                
             elif fdg.FDG_global.control_level==6:
                 # consider all parents(shortest sequences to represent parents)
                 # consider topological sorting in merged sequences
                 all_sequences_ftn = self._get_sequences_by_level_6(parents, ftn_idx)
                 if len(all_sequences_ftn) > 0:
-                    self.generated_sequences[ftn_idx] = sorted(all_sequences_ftn, key=len)
+                    self.sequences_generated_cur[ftn_idx] = sorted(all_sequences_ftn, key=len)
+
+                else:
+                    self.ftn_no_sequences.append(ftn_idx)
+            elif fdg.FDG_global.control_level==9:
+                # consider all parents(shortest sequences to represent parents)
+                # consider topological sorting in merged sequences
+                all_sequences_ftn = self._get_sequences_by_level_9(parents, ftn_idx)
+                if len(all_sequences_ftn) > 0:
+                    self.sequences_generated_cur[ftn_idx] = sorted(all_sequences_ftn, key=len)
 
                 else:
                     self.ftn_no_sequences.append(ftn_idx)
             else:
-                # consider each individual parent
+                #========================================
+                # consider parent subsets
+                # case 1: consider each individual parent
                 for p_ftn in parents:
-                    if p_ftn not in self.all_valid_sequences.keys(): continue
-                    p_sequences = self.all_valid_sequences[p_ftn]['sequences']
+                    if p_ftn not in self.valid_sequences_given_transformed.keys(): continue
+                    p_sequences = self.valid_sequences_given_transformed[p_ftn]['sequences']
                     for p_seq in p_sequences:
                         if len(p_seq) == self.fdg.depth_limit:  # consider sequences of length self.fdg.depth_limit
                             if [[self.fdg.depth_limit, p_seq[-1]], ftn_idx] not in all_sequences_ftn:
                                 all_sequences_ftn.append([[self.fdg.depth_limit, p_seq[-1]], ftn_idx])
 
-                # consider multiple parents
+                # case 2: consider multiple parents
                 if len(parent_groups) > 1:
                     # get all sequences for a function
-
                     for num_parents in range(1, len(parent_groups)):
                         seq_list=[]
                         if fdg.FDG_global.control_level == 0:  # the prefix of the first sequence is not fixed
@@ -697,129 +693,113 @@ class Sequence():
                                 all_sequences_ftn.append(seq)
                 # check if there are generated sequences
                 if len(all_sequences_ftn) > 0:
-                    self.generated_sequences[ftn_idx] = sorted(all_sequences_ftn, key=len)
+                    self.sequences_generated_cur[ftn_idx] = sorted(all_sequences_ftn, key=len)
                 else:
                     self.ftn_no_sequences.append(ftn_idx)
 
-        if len(self.generated_sequences.keys()) == 0:
-            return False
+        if len(self.sequences_generated_cur.keys()) == 0:
+            return
 
         # print(f'all sequences generated={self.generated_sequences}')
+        self.sequences_generated.append(self.sequences_generated_cur)
 
         # use an 2d array to indicate which sequences are assigned
         ftn_list = []
         ftn_seq_num = []
-        for ftn_idx, sequences in self.generated_sequences.items():
+        for ftn_idx, sequences in self.sequences_generated_cur.items():
             ftn_list.append(ftn_idx)
             ftn_seq_num.append(len(sequences))
 
         num_ftn = len(ftn_list)
         max_seq_num = max(ftn_seq_num)
         # create a matrix to register all sequences for each uncovered function
-        self.generated_sequences_assignment = np.zeros([max_seq_num, num_ftn])
+        self.assignment_sequence= np.zeros([max_seq_num, num_ftn])
         for idx, ftn_idx in enumerate(ftn_list):
             self.ftn_idx_to_column_idx[ftn_idx] = idx
             self.column_idx_to_ftn_idx[idx] = ftn_idx
-            self.generated_sequences_assignment[:, idx][0:ftn_seq_num[idx]] = 1
+            self.assignment_sequence[:, idx][0:ftn_seq_num[idx]] = 1
+        return
 
-        return True
 
-    def get_package_dict(self, ftn_not_covered: list):
-
-        # when no sequences are generated
-        if len(self.ftn_idx_to_column_idx.keys()) == 0: return {}
-
-        # update: mark all sequences of a function that is covered
-        ftn_to_be_assigned = []
-        for ftn_idx in self.ftn_idx_to_column_idx.keys():
-            if ftn_idx not in ftn_not_covered:
-                # unmark all its unassigned sequences
-                self.generated_sequences_assignment[:, self.ftn_idx_to_column_idx[ftn_idx]] = 0
-            else:
-                ftn_to_be_assigned.append(ftn_idx)
-
-        # get sequences for the package
-        current_package_dict = {}
-        current_package_dict['locate_state'] = []
-
-        # determine package size
-        # package_size=len(ftn_to_be_assigned)
-        # if self.num_seq_limit>3* len(ftn_to_be_assigned):
-        #     package_size=3* len(ftn_to_be_assigned)
-        # elif self.num_seq_limit> len(ftn_to_be_assigned):
-        #     package_size=self.num_seq_limit
-        package_size = 1
-
-        indices = np.where(self.generated_sequences_assignment == 1)
-        indices_list = [(x, y) for x, y in zip(indices[0], indices[1])]
-        if len(indices_list) > 0:
-            # transform sequences into graph
-            package_indices = indices_list[0:package_size]
-            sequences = []
-            for (seq_idx, col_idx) in package_indices:
-                # mark assigned sequences 0
-                self.generated_sequences_assignment[seq_idx, col_idx] = 0
-                # get the sequence
-                ftn_idx = self.column_idx_to_ftn_idx[col_idx]
-                seq = self.generated_sequences[ftn_idx][seq_idx]
-                sequences.append(seq)
-
-            # re-organize sequences in the package
-            for seq in sequences:
-                if seq[0] not in current_package_dict['locate_state']:
-                    current_package_dict['locate_state'] += [seq[0]]
-                if 0 not in current_package_dict.keys():
-                    current_package_dict[0] = {seq[0][1]: [seq[1]]}
-                else:
-                    if seq[0][1] not in current_package_dict[0].keys():
-                        current_package_dict[0][seq[0][1]] = [seq[1]]
-                    else:
-                        current_package_dict[0][seq[0][1]] += [seq[1]]
-
-                for i in range(1, len(seq) - 1):
-                    if i not in current_package_dict.keys():
-                        current_package_dict[i] = {seq[i]: [seq[i + 1]]}
-                    else:
-                        if seq[i] not in current_package_dict[i].keys():
-                            current_package_dict[i][seq[i]] = [seq[i + 1]]
-                        else:
-                            current_package_dict[i][seq[i]] += [seq[i + 1]]
-
-            # remove repeated elements
-            for depth, seq_dict in current_package_dict.items():
-                if isinstance(seq_dict, dict):
-                    for ftn, values in seq_dict.items():
-                        current_package_dict[depth][ftn] = list(set(values))
-
-            self.package_list.append(copy(current_package_dict))
-        return current_package_dict
 
     def get_one_sequence(self, ftn_not_covered: list) -> list:
-        # when no sequences are generated
-        if len(self.ftn_idx_to_column_idx.keys()) == 0: return []
+        sequences=[]
+        if len(self.assignment_sequence)>0:
+            # update self.assignment_sequence
+            for ftn_idx in self.uncovered_ftn_idx:
+                if ftn_idx not in ftn_not_covered:
+                    # unmark all its unassigned sequences
+                    self.assignment_sequence[:, self.ftn_idx_to_column_idx[ftn_idx]] = 0
 
-        # update: mark all sequences of a function that is covered
-        for ftn_idx in self.ftn_idx_to_column_idx.keys():
-            if ftn_idx not in ftn_not_covered:
-                # unmark all its unassigned sequences
-                self.generated_sequences_assignment[:, self.ftn_idx_to_column_idx[ftn_idx]] = 0
+            # there are still generated sequences not assigned yet
+            if 1 in self.assignment_sequence:
+                # get sequences, the package size is 1
+                sequences=self.assign_mark_a_sequence(1)[0]
+                return sequences
 
-        package_size = 1
-        indices = np.where(self.generated_sequences_assignment == 1)
+
+        # update valid_sequences_given_transformed
+        for key in self.valid_sequences_given.keys():
+            if key not in self.valid_sequences_given_transformed.keys():
+                value=self.valid_sequences_given[key]
+                self.valid_sequences_given_transformed[key]=self._valid_sequence_transform(value)
+
+        # generate and assigne sequences
+        self.generate_sequences()
+        if len(self.sequences_generated_cur) == 0:
+            return []
+        sequences = self.assign_mark_a_sequence(1)[0]
+        return sequences
+
+    def  assign_mark_a_sequence(self,package_size:int):
+
+        indices = np.where(self.assignment_sequence== 1)
         indices_list = [(x, y) for x, y in zip(indices[0], indices[1])]
+        sequences = []
         if len(indices_list) > 0:
-            # transform sequences into graph
+            # get a list of sequences
             package_indices = indices_list[0:package_size]
-            sequences = []
             for (seq_idx, col_idx) in package_indices:
                 # mark assigned sequences 0
-                self.generated_sequences_assignment[seq_idx, col_idx] = 0
+                self.assignment_sequence[seq_idx, col_idx] = 0
                 # get the sequence
                 ftn_idx = self.column_idx_to_ftn_idx[col_idx]
-                seq = self.generated_sequences[ftn_idx][seq_idx]
-                return seq
+                seq = self.sequences_generated_cur[ftn_idx][seq_idx]
+                sequences.append(seq)
+        return sequences
 
-        return []
+
+
+
+    # def get_one_sequence(self, ftn_not_covered: list) -> list:
+    #     # when no sequences are generated
+    #     if len(self.ftn_idx_to_column_idx.keys()) == 0: return []
+    #
+    #     # update: mark all sequences of a function that is covered
+    #     for ftn_idx in self.ftn_idx_to_column_idx.keys():
+    #         if ftn_idx not in ftn_not_covered:
+    #             # unmark all its unassigned sequences
+    #             self.generated_sequences_assignment[:, self.ftn_idx_to_column_idx[ftn_idx]] = 0
+    #
+    #     package_size = 1
+    #     indices = np.where(self.generated_sequences_assignment == 1)
+    #     indices_list = [(x, y) for x, y in zip(indices[0], indices[1])]
+    #     if len(indices_list) > 0:
+    #         # transform sequences into graph
+    #         package_indices = indices_list[0:package_size]
+    #         sequences = []
+    #         for (seq_idx, col_idx) in package_indices:
+    #             # mark assigned sequences 0
+    #             self.generated_sequences_assignment[seq_idx, col_idx] = 0
+    #             # get the sequence
+    #             ftn_idx = self.column_idx_to_ftn_idx[col_idx]
+    #             seq = self.generated_sequences[ftn_idx][seq_idx]
+    #             return seq
+    #
+    #     return []
+
+
+
 
 def _merge_sequences(nested_list:list):
     '''
@@ -858,7 +838,16 @@ if __name__ == '__main__':
     # fdg_object.depth_limit=2
     # seq_object.generate_sequences()
     # print(f'sequence={seq_object.generated_sequences}')
+    print(np.random.choice([1,2,3,4],size=2))
+    selection=[]
+    targets=[2,4,5,7,8]
+    for i in range(6):
+        selection=[]
+        for i in range(5):
+            selection.append(np.random.choice([True,False]))
 
+        print(f'randomly choose: {selection}')
+        print(f'randomly choose: {list(np.array(targets)[selection])}')
 
     index = list(range(10))
     chosen_index = np.random.choice(index,5,replace=False)

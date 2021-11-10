@@ -26,6 +26,7 @@ from mythril.laser.plugin.plugins import (
     CallDepthLimitBuilder,
     InstructionProfilerBuilder,
     FDG_prunerBuilder,
+    SSE_prunerBuilder,
 )
 from mythril.laser.ethereum.strategy.extensions.bounded_loops import (
     BoundedLoopsStrategy,
@@ -61,6 +62,7 @@ class SymExecWrapper:
         run_analysis_modules: bool = True,
         custom_modules_directory: str = "",
         fdg:bool=False,
+        sse:bool=False, #@wei
     ):
         """
 
@@ -125,7 +127,8 @@ class SymExecWrapper:
             create_timeout=create_timeout,
             transaction_count=transaction_count,
             requires_statespace=requires_statespace,
-            fdg=fdg
+            fdg=fdg,
+            sse=sse,
 
         )
 
@@ -147,6 +150,8 @@ class SymExecWrapper:
         if fdg:#@wei add FDG_pruner plugin
             plugin_loader.load(FDG_prunerBuilder())
             # disable_dependency_pruning=True
+        if sse:
+            plugin_loader.load(SSE_prunerBuilder())
 
         plugin_loader.instrument_virtual_machine(self.laser, None)
 

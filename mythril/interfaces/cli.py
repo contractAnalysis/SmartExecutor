@@ -383,7 +383,8 @@ def create_analyzer_parser(analyzer_parser: ArgumentParser):
     #@wei
     commands.add_argument("-fdg", "--function_dependency_graph", default=False, action='store_true',
                           help="indicate if function dependency graph is used to guide state exploration")
-
+    #@wei
+    commands.add_argument("-sse", "--support_sequence_execution", default=False, action='store_true', help='support executing sequences directly')
 
     commands.add_argument("-g", "--graph", help="generate a control flow graph")
     commands.add_argument(
@@ -450,6 +451,15 @@ def create_analyzer_parser(analyzer_parser: ArgumentParser):
         type=int,
         default=5,
         help="limit the number of seqeunces generated for each function that will be assigned to be executed.",
+    )
+
+    #@wei
+    options.add_argument(
+        "-seq",
+        "--sequences",
+        type=str,
+        help="sequences that will be executed directly",
+
     )
 
     options.add_argument(
@@ -719,7 +729,12 @@ def execute_command(
         fdg.FDG_global.control_level =args.control_level
         fdg.FDG_global.num_seq_limit = args.sequence_number_limit
         fdg.FDG_global.print_ftn_coverage=args.print_ftn_coverage
+        fdg.FDG_global.sequences=args.sequences
+
+
+
         analyzer = MythrilAnalyzer(
+            sse_flag=args.support_sequence_execution, #@wei  a flag
             fdg_flag=args.function_dependency_graph,  #@wei  a flag
             strategy=args.strategy,
             disassembler=disassembler,

@@ -44,4 +44,9 @@ global solc_indices
 global method_identifiers
 method_identifiers={}
 
+#===================================
+# support executing sequences directly
+global sequences
+sequences=''
+
 

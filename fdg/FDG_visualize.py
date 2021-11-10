@@ -392,22 +392,22 @@ if __name__=='__main__':
     # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/MultipleArbitrableTransaction.sol',
     #                          'AppealableArbitrator')
     #
-    ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/EtherBox.sol',
-                             'EtherBox')
-    ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/Bears.sol',
-                             'Sale')
-    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Vesting.sol',
-                             'EcosystemVesting')
-
-    ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/Vesting.sol',
-                             'TeamVesting')
-
-
-    ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/JavvyCrowdsale.sol',
-                             'JavvyCrowdsale')
-
-    ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/Bounty.sol',
-                             'Bounty')
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/EtherBox.sol',
+    #                          'EtherBox')
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/Bears.sol',
+    #                          'Sale')
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Vesting.sol',
+    #                          'EcosystemVesting')
+    #
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/Vesting.sol',
+    #                          'TeamVesting')
+    #
+    #
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/JavvyCrowdsale.sol',
+    #                          'JavvyCrowdsale')
+    #
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/Bounty.sol',
+    #                          'Bounty')
 
     functionsDict = ftn_info.functions_dict_slither()
 

@@ -70,6 +70,7 @@ class LaserEVM:
         requires_statespace=True,
         iprof=None,
         fdg=False,
+        sse=False,
 
     ) -> None:
         """
@@ -85,7 +86,8 @@ class LaserEVM:
         :param iprof: Instruction Profiler
         """
 
-        self.fdg_flag=fdg
+        self.fdg_flag=fdg #@wei
+        self.sse_flag=sse #@wei
         self.execution_info = []  # type: List[ExecutionInfo]
 
         self.open_states = []  # type: List[WorldState]
@@ -215,18 +217,24 @@ class LaserEVM:
         """
         self.time = datetime.now()
 
-        if self.fdg_flag:
+        if self.fdg_flag or self.sse_flag:
             i = 0
             while i <fdg.FDG_global.transaction_count:  #@wei rewrite loop
-                # if len(self.open_states) == 0:
-                #     break
-                # old_states_count = len(self.open_states)
-                # self.open_states = [
-                #     state for state in self.open_states if state.constraints.is_possible
-                # ]
-                # prune_count = old_states_count - len(self.open_states)
-                # if prune_count:
-                #     log.info("Pruned {} unreachable states".format(prune_count))
+
+                if self.sse_flag: # check state feasibility
+                    if len(self.open_states) == 0:
+                        # break
+                        print(f'iteration {i}, no open states are generated! ')
+                    else:
+                        print(f'iteration {i}, there is/are open state(s)!')
+                    old_states_count = len(self.open_states)
+                    self.open_states = [
+                        state for state in self.open_states if state.constraints.is_possible
+                    ]
+                    prune_count = old_states_count - len(self.open_states)
+                    if prune_count:
+                        log.info("Pruned {} unreachable states".format(prune_count))
+
                 log.info(
                     "Starting message call transaction, iteration: {}, {} initial states".format(
                         i, len(self.open_states)
