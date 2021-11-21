@@ -222,7 +222,7 @@ class FDG_pruner(LaserPlugin):
                     laserEVM.open_states = []
                     # create an Sequence object
                     self.seq_object = Sequence(self.FDG, self.uncovered_functions, self.sequences,
-                                               fdg.FDG_global.num_seq_limit)
+                                               fdg.FDG_global.prt_subset_num_limit,fdg.FDG_global.seq_num_limit)
                     self._request_next_sequence(laserEVM)
                     if self.cur_sequence_depth>0:
                         self.flag_go_through_sequence_generation=True
@@ -611,40 +611,46 @@ class FDG_pruner(LaserPlugin):
 
 
     def _request_next_sequence(self, laserEVM: LaserEVM):
-        self.cur_sequence=self.seq_object.get_one_sequence(self.uncovered_functions)
-        print(f'execute sequence={self.cur_sequence}')
-        if len(self.cur_sequence) < 2:  # the generated sequence has length >=2
-            self.flag_sequence_handle = False
-            # get functions that no sequences are generated for
-            self.ftn_no_sequences_pc_list = [self.ftn_pc[ftn_idx] for ftn_idx in
-                                             self.seq_object.ftn_no_sequences if
-                                             ftn_idx in self.ftn_pc.keys()]
-            self.ftn_no_sequences_pc_list.sort()
+        while (True):
+            self.cur_sequence=self.seq_object.get_one_sequence(self.uncovered_functions)
+            print(f'execute sequence={self.cur_sequence}')
+            if len(self.cur_sequence) < 2:  # the generated sequence has length >=2
+                self.flag_sequence_handle = False
+                # get functions that no sequences are generated for
+                self.ftn_no_sequences_pc_list = [self.ftn_pc[ftn_idx] for ftn_idx in
+                                                 self.seq_object.ftn_no_sequences if
+                                                 ftn_idx in self.ftn_pc.keys()]
+                self.ftn_no_sequences_pc_list.sort()
 
-            if len(self.ftn_no_sequences_pc_list) > 0 or len(self.ftn_special_pc) > 0:
-                self.flag_no_sequence_generated_handle = True
-                self.states_available_depth_index = self.states_available_depth = 0
-                self.states_available = []
-        else:
+                if len(self.ftn_no_sequences_pc_list) > 0 or len(self.ftn_special_pc) > 0:
+                    self.flag_no_sequence_generated_handle = True
+                    self.states_available_depth_index = self.states_available_depth = 0
+                    self.states_available = []
+                break
+            else:
+                self.cur_sequence_depth = len(self.cur_sequence)
+                self.cur_sequence_depth_index = 1
 
-            self.cur_sequence_depth = len(self.cur_sequence)
-            self.cur_sequence_pc=[0]
-            for i in range (1,self.cur_sequence_depth):
-                ftn_idx=self.cur_sequence[i]
-                if ftn_idx in self.ftn_pc.keys():
-                    pc = self.ftn_pc[ftn_idx]
-                    self.cur_sequence_pc.append(pc)
+                # get states for the sequence
+                # get the states for this sequence
+                depth = self.cur_sequence[0][0]
+                ftn_idx = self.cur_sequence[0][1]
+                if depth in self.OS_states.keys():
+                    if ftn_idx in self.OS_states[depth].keys():
+                        self.states_available = self.OS_states[depth][ftn_idx]
+                self.states_available_depth = len(self.states_available)
 
-            self.cur_sequence_depth_index = 1
-            # get states for the sequence
-            # get the states for this sequence
-            depth = self.cur_sequence[0][0]
-            ftn_idx = self.cur_sequence[0][1]
-            if depth in self.OS_states.keys():
-                if ftn_idx in self.OS_states[depth].keys():
-                    self.states_available = self.OS_states[depth][ftn_idx]
-            self.states_available_depth = len(self.states_available)
-            laserEVM.open_states=[copy(self.states_available[self.states_available_depth_index])]
+                if self.states_available_depth>0:
+                    # get pc for each function in the sequence
+                    self.cur_sequence_pc = [0]
+                    for i in range(1, self.cur_sequence_depth):
+                        ftn_idx = self.cur_sequence[i]
+                        if ftn_idx in self.ftn_pc.keys():
+                            pc = self.ftn_pc[ftn_idx]
+                            self.cur_sequence_pc.append(pc)
+
+                    laserEVM.open_states=[copy(self.states_available[self.states_available_depth_index])]
+                    break
 
     def _update_coverage(self):
         """

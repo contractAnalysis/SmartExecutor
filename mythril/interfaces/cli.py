@@ -449,6 +449,14 @@ def create_analyzer_parser(analyzer_parser: ArgumentParser):
         "-snl",
         "--sequence-number-limit",
         type=int,
+        default=1,
+        help="limit the number of seqeunces generated for each parent sequence list.",
+    )
+    #@wei
+    options.add_argument(
+        "-pnl",
+        "--parent-subset-number-limit",
+        type=int,
         default=5,
         help="limit the number of seqeunces generated for each function that will be assigned to be executed.",
     )
@@ -727,7 +735,8 @@ def execute_command(
     elif args.command in ANALYZE_LIST:
         #@wei
         fdg.FDG_global.control_level =args.control_level
-        fdg.FDG_global.num_seq_limit = args.sequence_number_limit
+        fdg.FDG_global.seq_num_limit = args.sequence_number_limit
+        fdg.FDG_global.prt_subset_num_limit = args.parent_subset_number_limit
         fdg.FDG_global.print_ftn_coverage=args.print_ftn_coverage
         fdg.FDG_global.sequences=args.sequences
 

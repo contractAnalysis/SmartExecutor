@@ -409,6 +409,8 @@ if __name__=='__main__':
     # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/Bounty.sol',
     #                          'Bounty')
 
+    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/wqp_test.sol',
+                             'wqp_test')
     functionsDict = ftn_info.functions_dict_slither()
 
     fdg=FDG(functionsDict)

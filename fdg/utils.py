@@ -84,3 +84,22 @@ def get_combination(list_for_comb,comb_length:int):
         com_re +=it.product(*list(groups))
 
     return com_re
+
+def get_binary(length:int,number:int):
+    bin_list=[]
+    bin_str=bin(number)
+
+    bin_list=[int(bin_str[i]) for i in range(2,len(bin_str))]
+    if length>len(bin_list):
+        extra=[0 for i in range(length -len(bin_list))]
+        bin_list=extra+bin_list
+    return bin_list
+
+
+if __name__ == '__main__':
+    import numpy as np
+    print(get_binary(7,16))
+    print(get_binary(6,16))
+    print(np.random.choice(range(10), size=2, replace=False))
+
+
