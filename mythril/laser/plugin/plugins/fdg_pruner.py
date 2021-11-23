@@ -639,6 +639,7 @@ class FDG_pruner(LaserPlugin):
                     if ftn_idx in self.OS_states[depth].keys():
                         self.states_available = self.OS_states[depth][ftn_idx]
                 self.states_available_depth = len(self.states_available)
+                self.states_available_depth_index=0
 
                 if self.states_available_depth>0:
                     # get pc for each function in the sequence
@@ -648,8 +649,8 @@ class FDG_pruner(LaserPlugin):
                         if ftn_idx in self.ftn_pc.keys():
                             pc = self.ftn_pc[ftn_idx]
                             self.cur_sequence_pc.append(pc)
-
-                    laserEVM.open_states=[copy(self.states_available[self.states_available_depth_index])]
+                    if self.states_available_depth_index<self.states_available_depth:
+                        laserEVM.open_states=[copy(self.states_available[self.states_available_depth_index])]
                     break
 
     def _update_coverage(self):

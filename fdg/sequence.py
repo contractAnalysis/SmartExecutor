@@ -407,7 +407,7 @@ class Sequence():
         topological sorting in sequence merging process
         :return:
         """
-        prt_subset_num_limit= self.prt_subset_num_limit - 1
+        prt_subset_num_limit= fdg.FDG_global.prt_subset_num_limit - 1
         collection_seq=[]
 
 
@@ -586,7 +586,7 @@ class Sequence():
                 self.ftn_no_sequences.append(ftn_idx)
                 continue
 
-            parent_groups = [values for values in l_p_dict.values()]
+            parent_groups = [values for values in l_p_dict.values() if len(values)>0]
 
             all_sequences_ftn = []
             if fdg.FDG_global.control_level==1:
@@ -732,6 +732,15 @@ if __name__ == '__main__':
     #
     #
     # holoToken_generated_sequences=[[[1, 10], 12, 3, 5, 11, 13, 14], [[1, 10], 12, 3, 5, 13, 11, 14], [[1, 10], 12, 3, 11, 5, 13, 14], [[1, 10], 12, 3, 11, 13, 5, 14], [[1, 10], 12, 3, 13, 5, 11, 14], [[1, 10], 12, 3, 13, 11, 5, 14], [[1, 10], 12, 5, 3, 11, 13, 14], [[1, 10], 12, 5, 3, 13, 11, 14], [[1, 10], 12, 5, 11, 3, 13, 14], [[1, 10], 12, 5, 11, 13, 3, 14], [[1, 10], 12, 5, 13, 3, 11, 14], [[1, 10], 12, 5, 13, 11, 3, 14], [[1, 10], 11, 12, 3, 5, 13, 14], [[1, 10], 11, 12, 3, 13, 5, 14], [[1, 10], 11, 12, 5, 3, 13, 14], [[1, 10], 11, 12, 5, 13, 3, 14], [[1, 10], 11, 13, 12, 3, 5, 14], [[1, 10], 11, 13, 12, 5, 3, 14], [[1, 13], 10, 12, 3, 5, 11, 14], [[1, 13], 10, 12, 3, 11, 5, 14], [[1, 13], 10, 12, 5, 3, 11, 14], [[1, 13], 10, 12, 5, 11, 3, 14], [[1, 13], 10, 11, 12, 3, 5, 14], [[1, 13], 10, 11, 12, 5, 3, 14]]
-    a=[1,2,3,4]
-    re=np.random.choice(a,size=4, replace=False)
-    print(list(range(1,3)))
+
+    # a=[1,2,3,4]
+    # re=np.random.choice(a,size=4, replace=False)
+    # print(list(range(1,3)))
+    #
+    # a=[[1],[],[2,3]]
+    # b=[i for i in a if len(i)>0]
+    # print(b)
+
+    a=[2,3,4,3,5,-2]
+    select=np.random.choice(a, size=0, replace=False)
+    print(select)
