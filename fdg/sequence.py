@@ -379,7 +379,7 @@ class Sequence():
                 if p_subset not in parent_subsets:
                     parent_subsets.append(p_subset)
 
-        # for each group subset, randomly select one parent
+        # for each group subset, get sequences
         for p_subset in parent_subsets:
             if len(p_subset)==1:
                 seq_ = self._get_sequence_1_parent_considered(p_subset[0],ftn_idx)
