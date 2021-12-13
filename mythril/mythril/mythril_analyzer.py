@@ -55,6 +55,7 @@ class MythrilAnalyzer:
         call_depth_limit: int = 3,
         solver_log: Optional[str] = None,
         fdg_flag=False, #@wei
+        sse_flag=False, #@wei
 
     ):
         """
@@ -69,6 +70,7 @@ class MythrilAnalyzer:
         fdg.FDG_global.solidity_path=disassembler.contracts[0].input_file
         fdg.FDG_global.contract=disassembler.contracts[0].name
         self.fdg=fdg_flag
+        self.sse=sse_flag
 
         self.eth = disassembler.eth
         self.contracts = disassembler.contracts or []  # type: List[EVMContract]
@@ -108,7 +110,8 @@ class MythrilAnalyzer:
             disable_dependency_pruning=self.disable_dependency_pruning,
             run_analysis_modules=False,
             custom_modules_directory=self.custom_modules_directory,
-            fdg=self.fdg #@wei here
+            fdg=self.fdg, #@wei here
+            sse=self.sse, #@wei
         )
 
         return get_serializable_statespace(sym)
@@ -142,7 +145,8 @@ class MythrilAnalyzer:
             disable_dependency_pruning=self.disable_dependency_pruning,
             run_analysis_modules=False,
             custom_modules_directory=self.custom_modules_directory,
-            fdg=self.fdg #@wei
+            fdg=self.fdg, #@wei
+            sse=self.sse,#@wei
 
         )
         return generate_graph(sym, physics=enable_physics, phrackify=phrackify)
@@ -178,7 +182,8 @@ class MythrilAnalyzer:
                     compulsory_statespace=True,
                     disable_dependency_pruning=self.disable_dependency_pruning,
                     custom_modules_directory=self.custom_modules_directory,
-                    fdg=self.fdg #@wei
+                    fdg=self.fdg, #@wei
+                    sse=self.sse, #@wei
                 )
                 issues = fire_lasers(sym, modules)
                 execution_info = sym.execution_info

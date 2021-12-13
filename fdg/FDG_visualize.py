@@ -1,11 +1,15 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import networkx as nx
-from fdg.FDG_3d_array import *
+from matplotlib.lines import Line2D
+from matplotlib import gridspec
+from fdg.funtion_info import  Function_info
+from fdg.FDG import FDG
+import sys
 
 
+def draw_FDG_w_edge_label(nodes_list,edges_dict,nodes_labels,colors_list,save_pdf):
 
-def draw_FDG_w_edge_label(nodes_list,edges_dict,colors_list):
 
     # get needed edge data from edges_label_dictt
     edges_list = []
@@ -32,6 +36,7 @@ def draw_FDG_w_edge_label(nodes_list,edges_dict,colors_list):
     # pos = nx.layout.planar_layout(G)
     pos = nx.layout.circular_layout(G)
     # pos = nx.layout.spring_layout(G)
+    # pos = nx.layout.shell_layout(G)
 
     # get an color for each node
     nodes_color_list = []
@@ -46,6 +51,7 @@ def draw_FDG_w_edge_label(nodes_list,edges_dict,colors_list):
     edges_labels_unique = list(set(edges_label_list))
     edges_label_color_dict = {}
 
+
     for i in range(len(edges_labels_unique)):
         edges_label_color_dict[edges_labels_unique[i]] = colors_list[i]
 
@@ -56,18 +62,70 @@ def draw_FDG_w_edge_label(nodes_list,edges_dict,colors_list):
         label = edges_label_dict.get(edge)
         edges_color_list.append(edges_label_color_dict.get(label))
 
+        # fig, (ax1,ax2)=plt.subplots(nrows=1,ncols=2,figsize=(10,6))
+
+    height=7
+    # create a figure
+    fig = plt.figure()
+    # to change size of subplot's
+    # set height of each subplot as 8
+    fig.set_figheight(height)
+
+    # set width of each subplot as 8
+    fig.set_figwidth(12)
+
+    # create grid for different subplots
+    spec = gridspec.GridSpec(ncols=2, nrows=1,
+                             width_ratios=[3, 1], wspace=0,
+                             hspace=0)
+
+    # # initializing x,y axis value
+    # x = np.arange(0, 10, 0.1)
+    # y = np.cos(x)
+
+    # ax1 will take 0th position in
+    # geometry(Grid we created for subplots),
+    # as we defined the position as "spec[0]"
+    ax1 = fig.add_subplot(spec[0])
+
+    # ax2 will take 0th position in
+    # geometry(Grid we created for subplots),
+    # as we defined the position as "spec[1]"
+    ax2 = fig.add_subplot(spec[1])
+
     # draw nodes
-    nodes = nx.draw(G, pos, node_size=500, node_color=nodes_color_list, alpha=0.9,
+    h1=nodes = nx.draw(G, pos,ax=ax1, node_size=500, node_color=nodes_color_list, alpha=0.9,
                     labels={node: node for node in G.nodes()}, with_labels=True, font_color='black')
 
     # draw edges
-    nx.draw_networkx_edges(G, pos, arrowstyle="->", arrowsize=20, edge_color=edges_color_list, width=2)
+    h2=nx.draw_networkx_edges(G, pos, ax=ax1,arrowstyle="->", arrowsize=20, edge_color=edges_color_list, width=2)
 
-    # draw edge labels
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edges_label_dict, font_color='black')
+    # # draw edge labels
+    # nx.draw_networkx_edge_labels(G, pos, edge_labels=edges_label_dict, font_color='black')
 
-    ax = plt.gca()
-    ax.set_axis_off()
+    # show the legend of edges
+    ax2.text(0,0.9,"color  label (edge)", ha='left',fontweight='bold')
+    def make_proxy(crl,mappable,**kwargs):
+        return Line2D([0,1],[0,1], color=crl, **kwargs)
+    edge_labels = ["{}".format(edges_label_dict.get(edge)) for (edge) in G.edges()]
+    edge_labels=list(set(edge_labels))
+    edge_colors=[edges_label_color_dict.get(label) for label in edge_labels]
+    proxies=[make_proxy(clr,h2,lw=5) for clr in edge_colors]
+    ax2.legend(proxies, edge_labels,loc='upper left',bbox_to_anchor=(0,0.9))
+
+    y_index = 0.9 - 0.04 * (len(edge_labels) + 1)
+    ax2.text(0, y_index, "node: function name", ha='left', fontweight='bold')
+    # show legend: node--function name
+
+    for index,ftn_name in enumerate(nodes_labels):
+        y_index-=0.03
+        ax2.text(0, y_index, "f"+str(index)+":  "+ftn_name, ha='left')
+
+
+    ax2.set_axis_off()
+    fig.tight_layout()
+    if len(save_pdf)>0:
+        plt.savefig(save_pdf)
     plt.show()
 
 def draw_FDG_w_edge_label_node_label(functions_dict,nodes_list,edges_dict,colors_list):
@@ -138,6 +196,7 @@ def draw_FDG_w_edge_label_node_label(functions_dict,nodes_list,edges_dict,colors
 
     ax = plt.gca()
     ax.set_axis_off()
+
     plt.show()
 
 def draw_FDG_wo_edge_label(nodes_list,edges_list):
@@ -224,33 +283,46 @@ def draw_FDG_w_node_label(functions_dict,nodes_list,edges_dict):
 
 def get_nodes_edges_from_fdg(fdg:FDG):
     nodes=['f'+str(key) for key,_ in fdg.index_to_ftn.items()]
-    edge_dict={}
-    for i in range(fdg.fdg_3d_array.shape[0]):
-        positions=np.nonzero(fdg.fdg_3d_array[i,:,:]>=0)
-        for row,col in zip(positions[0],positions[1]):
-            sv_index=fdg.fdg_3d_array[i,row,col]
-            if sv_index==fdg.num_label:
-                edge_dict['f'+str(col)+",f"+str(row)]='none'
-            elif sv_index>=0:
-                edge_dict['f'+str(col)+",f"+str(row)]=fdg.index_to_label[sv_index]
-            else:
-                # edge_dict['f'+str(col)+",f"+str(row)]='does not exist'
-                pass
+    edge_dict=fdg.edges
+    nodes_labels=[0]*fdg.num_ftn
+    for index, ftn in fdg.index_to_ftn.items():
+        nodes_labels[index]=ftn
+    nodes_labels[0]='constructor()'
+    nodes_labels[1]='fallback()'
 
 
-    return nodes,edge_dict
 
+    return nodes,edge_dict,nodes_labels
 
 
 
 
 
 if __name__=='__main__':
-    colors = ['orange','green','purple','brown','pink','gray','olive','cyan','navy','blueviolet','purple','magenta','crimson']
-
-    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken')
+    # if len(sys.argv)>=2:
+    #     colors = ['orange', 'green', 'purple', 'brown', 'black', 'olive', 'cyan', 'navy', 'blueviolet', 'purple',
+    #               'magenta', 'crimson']
     #
-    # function_list = [1, 5, 7, 6, 10]
+    #     dir_path='/media/sf___share_vms/__contracts_1818/'
+    #     save_path="/media/sf___share_vms/"
+    #
+    #     file_path=dir_path+sys.argv[1]
+    #     ftn_info = Function_info(file_path,sys.argv[2])
+    #     save_pdf=save_path+sys.argv[1]+"_"+sys.argv[2]+".pdf"
+    #
+    #     functionsDict = ftn_info.functions_dict_slither()
+    #     fdg = FDG(functionsDict)
+    #     nodes_, edges_, nodes_labels = get_nodes_edges_from_fdg(fdg)
+    #     draw_FDG_w_edge_label(nodes_, edges_, nodes_labels, colors,save_pdf)
+    #
+    # else:
+    #     print(f'number of arguments: {len(sys.argv)}')
+
+    colors = ['orange','green','purple','brown','black','olive','cyan','navy','blueviolet','purple','magenta','crimson']
+
+    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/HoloToken.sol', 'HoloToken')
+
+
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/Crowdsale.sol', 'Crowdsale')
     # function_list = [1,2,3]
 
@@ -271,76 +343,95 @@ if __name__=='__main__':
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Expiry.sol', 'SoloMargin')
     # function_list = [8,9,11,20,22,23]
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/HUBRISSTAKING.sol', 'HUBRISSTAKING')
-    # function_list = [1,3]
+    # function_list = [2,4]
 
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/play_me_quiz.sol', 'play_me_quiz')
     # function_list = [1]
     # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Bears.sol', 'Sale')
     # function_list = [1]
-    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/SolidifiedMain.sol', 'SolidifiedMain')
-    function_list = [1]
-    # error: slither.exceptions.SlitherException: Function not found on TMP_25(None)
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/SolidifiedMain.sol', 'SolidifiedMain')
+    # function_list = [1]
+    # # error: slither.exceptions.SlitherException: Function not found on TMP_25(None)
 
-    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/THE_BANK.sol',
-                             'THE_BANK')
-    function_list = [1,2]
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/THE_BANK.sol',
+    #                          'THE_BANK')
+    # function_list = [1,2]
+
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Game11B.sol',
+    #                          'Game11B')
+    # function_list = [1]
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Vesting.sol',
+    #                          'EcosystemVesting')
+    # function_list = [4,5,7]
+
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/MKernel.sol',
+    #                          'KernelEscrow')
+    # function_list = [2,3,4]
+
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/RetroArtTokenAuction.sol',
+    #                          'RetroArtTokenAuction')
+    # function_list = [9,11,12,13,18,19,21,22]
+
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/token_contracts/HEX.sol',
+    #                          'HEX')
+    # function_list = [1, 36, 30, 31, 34, 14, 37]
+
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/AQS.sol',
+    #                          'AQS')
+
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/AawMTK.sol',
+    #                          'AawMTK')
+    #
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/AZT.sol',
+    #                          'AZT')
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/BKU.sol',
+    #                          'BKU')
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/Bitway.sol',
+    #                          'Bitway')
+    #
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/MultipleArbitrableTransaction.sol',
+    #                          'AppealableArbitrator')
+    #
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/EtherBox.sol',
+    #                          'EtherBox')
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/Bears.sol',
+    #                          'Sale')
+    # ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/contracts_special/Vesting.sol',
+    #                          'EcosystemVesting')
+    #
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/Vesting.sol',
+    #                          'TeamVesting')
+    #
+    #
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/JavvyCrowdsale.sol',
+    #                          'JavvyCrowdsale')
+    #
+    # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/Bounty.sol',
+    #                          'Bounty')
+
+    ftn_info = Function_info('//media/sf___share_vms/sGuard_contracts/0x390c8b4e5c5ddac6f0e5cdbae596903041389223.sol',
+                             'P2pSwap')
+
 
     functionsDict = ftn_info.functions_dict_slither()
-    # # visualize FDG based on function info
-    # nodes,edges=get_nodes_edges(functionsDict)
-    # print(f'number of nodes:{len(nodes)}')
-    # print(f'number of edges:{len(edges)}')
-    # draw_FDG_w_edge_label(nodes, edges,colors)
 
-    #visualize FDG built from fdg_3d_array
     fdg=FDG(functionsDict)
     print(functionsDict)
 
 
-    fdg.build_fdg_3d_array(function_list)
+
     print(f'{fdg.ftn_to_index}')
 
-    nodes_,edges_=get_nodes_edges_from_fdg(fdg)
+    nodes_,edges_,nodes_labels=get_nodes_edges_from_fdg(fdg)
     print(f'number of nodes:{len(nodes_)}')
     print(f'nodes={nodes_}')
     print(f'number of edges:{len(edges_)}')
     print(f'edges={edges_}')
-    print(f'depth all functions reached:{fdg.depth_all_ftns_reached}')
-    print(f'depth edges reached:{fdg.depth_all_edges_reached}')
-    draw_FDG_w_edge_label(nodes_, edges_,colors)
+
+    save_fig_path="/media/sf___share_vms/pdf/"
+    save_fig_pdf = save_fig_path+"xx.pdf"
+    draw_FDG_w_edge_label(nodes_, edges_,nodes_labels,colors,save_fig_pdf)
 
 
-
-
-    # # visualize FDG built from fdg_3d_array, add
-    # fdg=FDG(functionsDict)
-    # nodes_1,edges_1=get_nodes_edges_from_fdg(fdg)
-    # print(f'number of nodes:{len(nodes_1)}')
-    # print(f'number of edges:{len(edges_1)}')
-    # print(fdg.fdg_3d_array)
-    # fdg_array1=fdg.fdg_3d_array
-    # fdg.fdg_add(2,3)
-    # nodes_2,edges_2=get_nodes_edges_from_fdg(fdg)
-    # print(f'number of nodes:{len(nodes_2)}')
-    # print(f'number of edges:{len(edges_2)}')
-    # draw_FDG_w_edge_label(nodes_2, edges_2, colors)
-    #
-    #
-    # # print(edges_1.keys())
-    # # print(edges_2.keys())
-    # # added_edges=list(set(edges_2).difference(set(edges_1)))
-    # # print(f'added edges: {added_edges}')
-    #
-    # # fdg.fdg_delete(3)
-    # # nodes_3,edges_3=get_nodes_edges_from_fdg(fdg)
-    # # print(f'number of nodes:{len(nodes_3)}')
-    # # print(f'number of edges:{len(edges_3)}')
-    # # print(fdg.fdg_3d_array)
-    # # fdg_array2=fdg.fdg_3d_array
-    # # comparison=fdg_array1==fdg_array2
-    # # if comparison.all():
-    # #     print(f'True')
-    # # else: print('False')
-    # # # draw_FDG_w_edge_label(nodes_3, edges_3,colors)
 
 

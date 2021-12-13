@@ -14,6 +14,7 @@ import sys
 import coloredlogs
 import traceback
 
+import fdg
 import mythril.support.signatures as sigs
 from argparse import ArgumentParser, Namespace, RawTextHelpFormatter
 
@@ -379,9 +380,11 @@ def create_analyzer_parser(analyzer_parser: ArgumentParser):
         "usage: file1.sol:OptionalContractName file2.sol file3.sol:OptionalContractName",
     )
     commands = analyzer_parser.add_argument_group("commands")
-    # @wei
+    #@wei
     commands.add_argument("-fdg", "--function_dependency_graph", default=False, action='store_true',
                           help="indicate if function dependency graph is used to guide state exploration")
+    #@wei
+    commands.add_argument("-sse", "--support_sequence_execution", default=False, action='store_true', help='support executing sequences directly')
 
     commands.add_argument("-g", "--graph", help="generate a control flow graph")
     commands.add_argument(
@@ -432,6 +435,47 @@ def create_analyzer_parser(analyzer_parser: ArgumentParser):
         type=int,
         default=2,
         help="Maximum number of transactions issued by laser",
+    )
+    #@wei
+    options.add_argument(
+        "-cl",
+        "--control-level",
+        type=int,
+        default=2,
+        help="possible values:0,1,2,3,4,5,6,7,8. the control level for sequence generation",
+    )
+    #@wei
+    options.add_argument(
+        "-snl",
+        "--sequence-number-limit",
+        type=int,
+        default=1,
+        help="limit the number of seqeunces generated for each parent sequence list.",
+    )
+    #@wei
+    options.add_argument(
+        "-pnl",
+        "--parent-subset-number-limit",
+        type=int,
+        default=5,
+        help="limit the number of seqeunces generated for each function that will be assigned to be executed.",
+    )
+
+    #@wei
+    options.add_argument(
+        "-seq",
+        "--sequences",
+        type=str,
+        help="sequences that will be executed directly",
+
+    )
+
+    options.add_argument(
+        "-p",
+        "--print-ftn-coverage",
+        type=int,
+        default=1,
+        help="0: no; 1:print function coverage",
     )
     options.add_argument(
         "--execution-timeout",
@@ -689,7 +733,17 @@ def execute_command(
             print("Disassembly: \n" + disassembler.contracts[0].get_creation_easm())
 
     elif args.command in ANALYZE_LIST:
+        #@wei
+        fdg.FDG_global.control_level =args.control_level
+        fdg.FDG_global.seq_num_limit = args.sequence_number_limit
+        fdg.FDG_global.prt_subset_num_limit = args.parent_subset_number_limit
+        fdg.FDG_global.print_ftn_coverage=args.print_ftn_coverage
+        fdg.FDG_global.sequences=args.sequences
+
+
+
         analyzer = MythrilAnalyzer(
+            sse_flag=args.support_sequence_execution, #@wei  a flag
             fdg_flag=args.function_dependency_graph,  #@wei  a flag
             strategy=args.strategy,
             disassembler=disassembler,
@@ -853,6 +907,7 @@ def parse_args_and_execute(parser: ArgumentParser, args: Namespace) -> None:
         execute_command(
             disassembler=disassembler, address=address, parser=parser, args=args
         )
+
     except CriticalError as ce:
         exit_with_error(args.__dict__.get("outform", "text"), str(ce))
     except Exception:

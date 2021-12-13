@@ -25,6 +25,8 @@ def test_get_expr_variables():
     assert str(y) in variables
     assert str(z) in variables
     assert str(b) in variables
+    print(f'variable={variables}') #@wei
+
 
 
 def test_get_expr_variables_num():
@@ -37,6 +39,7 @@ def test_get_expr_variables_num():
 
     # Assert
     assert [b] == variables
+    print(f'variable={variables}') #@wei
 
 
 def test_create_bucket():
@@ -100,6 +103,7 @@ def test_Independence_solver_unsat():
     # Act
     solver.add(*conditions)
     result = solver.check()
+    print(f'result={result}')
 
     # Assert
     assert z3.unsat == result
@@ -143,3 +147,27 @@ def test_independence_solver_sat():
 
     # Assert
     assert z3.sat == result
+
+#@wei add
+if __name__=="__main__":
+    # test_get_expr_variables()
+    # test_get_expr_variables_num()
+    # test_Independence_solver_unsat()
+
+    # Arrange
+    x = symbol_factory.BitVecSym("x", 256)
+    y = symbol_factory.BitVecSym("y", 256)
+    z = symbol_factory.BitVecSym("z", 256)
+    conditions = [x > y, y == z, y != z]
+    # conditions = [x > y, y == z3.BitVecVal(2, 256), y != z3.BitVecVal(2, 256)]
+    solver = IndependenceSolver()
+
+    # Act
+    solver.add(*conditions)
+    result = solver.check()
+    print(f'result={result}')
+
+    # Assert
+    assert z3.unsat == result
+
+

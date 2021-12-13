@@ -60,6 +60,8 @@ class InstructionCoveragePlugin(LaserPlugin):
                 print(f'#@coverage')
                 print("Achieved {:.2f}% coverage for code: {}".format(
                         cov_percentage, code))
+                print(f'code_cov[0]={code_cov[0]}')
+                print(f'code_cov[1]={code_cov[1]}')
 
         @symbolic_vm.laser_hook("execute_state")
         def execute_state_hook(global_state: GlobalState):
@@ -89,11 +91,10 @@ class InstructionCoveragePlugin(LaserPlugin):
                 % (self.tx_id, end_coverage - self.initial_coverage)
             )
             self.tx_id += 1
-            i=0
-            for code, code_cov in self.coverage.items():
-                if i==2:return
-                fdg.FDG_global.coverage[i]=sum(code_cov[1]) / float(code_cov[0]) * 100
-                i += 1
+            if fdg.FDG_global.target_bytecode in self.coverage.keys():
+                code_cov=self.coverage[fdg.FDG_global.target_bytecode]
+                fdg.FDG_global.coverage=sum(code_cov[1]) / float(code_cov[0]) * 100
+                fdg.FDG_global.ftns_instr_cov=code_cov[1]
 
     def _get_covered_instructions(self) -> int:
         """Gets the total number of covered instructions for all accounts in
