@@ -409,8 +409,10 @@ if __name__=='__main__':
     # ftn_info = Function_info('/media/sf___share_vms/__contracts_1818/Bounty.sol',
     #                          'Bounty')
 
-    ftn_info = Function_info('/home/wei/PycharmProjects/Contracts/_wei/wqp_test.sol',
-                             'wqp_test')
+    ftn_info = Function_info('//media/sf___share_vms/sGuard_contracts/0x390c8b4e5c5ddac6f0e5cdbae596903041389223.sol',
+                             'P2pSwap')
+
+
     functionsDict = ftn_info.functions_dict_slither()
 
     fdg=FDG(functionsDict)

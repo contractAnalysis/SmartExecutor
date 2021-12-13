@@ -269,7 +269,7 @@ class Sequence():
         collection_seq = []
         parent_sequences = self._get_parent_sequnces(parents)
         for p_seq in parent_sequences:
-            sequences = self.self._get_topological_sequences(p_seq, ftn_idx)
+            sequences = self._get_topological_sequences(p_seq, ftn_idx,False)
             for seq in sequences:
                 if seq not in collection_seq:
                     collection_seq.append(seq)
@@ -286,7 +286,7 @@ class Sequence():
         parents=[p for p_list in parent_groups for p in p_list]
         parents=list(set(parents))
         for p_idx in parents:
-            seq_gen=self._get_sequence_1_parent_considered(p_idx,ftn_idx)
+            seq_gen=self._get_sequence_1_parent_considered(p_idx,ftn_idx,True)
             for seq in seq_gen:
                 if seq not in final_sequences:
                     final_sequences.append(seq)
@@ -310,7 +310,7 @@ class Sequence():
 
         return final_sequences
 
-    # parent subset, topological sorting
+    # parent subset,merge sequences, all permutations of a parent sequence are considered
     def _get_sequences_by_level_4(self, parent_groups:list, ftn_idx):
         final_sequences = []
         if len(parent_groups)==0: return []
@@ -319,7 +319,7 @@ class Sequence():
         parents=[p for p_list in parent_groups for p in p_list]
         parents=list(set(parents))
         for p_idx in parents:
-            seq_gen=self._get_sequence_1_parent_considered(p_idx,ftn_idx)
+            seq_gen=self._get_sequence_1_parent_considered(p_idx,ftn_idx,True)
             for seq in seq_gen:
                 if seq not in final_sequences:
                     final_sequences.append(seq)
@@ -382,7 +382,7 @@ class Sequence():
         # for each group subset, get sequences
         for p_subset in parent_subsets:
             if len(p_subset)==1:
-                seq_ = self._get_sequence_1_parent_considered(p_subset[0],ftn_idx)
+                seq_ = self._get_sequence_1_parent_considered(p_subset[0],ftn_idx,False)
                 for seq in seq_:
                     if seq not in collection_seq:
                         collection_seq.append(seq)
@@ -441,7 +441,7 @@ class Sequence():
         # for each group subset, randomly select one parent
         for p_subset in parent_subsets:
             if len(p_subset)==1:
-                seq_ = self._get_sequence_1_parent_considered(p_subset[0],ftn_idx)
+                seq_ = self._get_sequence_1_parent_considered(p_subset[0],ftn_idx,False)
                 for seq in seq_:
                     if seq not in collection_seq:
                         collection_seq.append(seq)
@@ -533,14 +533,18 @@ class Sequence():
 
         return parent_sequences
 
-    def _get_sequence_1_parent_considered(self,parent_idx:int,ftn_idx:int):
+    def _get_sequence_1_parent_considered(self,parent_idx:int,ftn_idx:int,flag_consider_prefix:bool):
         collection_seq=[]
         if parent_idx not in self.valid_sequences_given_transformed.keys(): return []
         p_sequences = self.valid_sequences_given_transformed[parent_idx]['sequences']
         for p_seq in p_sequences:
             if len(p_seq) == self.fdg.depth_limit:  # consider sequences of length self.fdg.depth_limit
-                if [[self.fdg.depth_limit, parent_idx], ftn_idx] not in collection_seq:
-                    collection_seq.append([[self.fdg.depth_limit, parent_idx], ftn_idx])
+                if flag_consider_prefix:
+                    if [[self.fdg.depth_limit, parent_idx], ftn_idx] not in collection_seq:
+                        collection_seq.append([[self.fdg.depth_limit, parent_idx], ftn_idx])
+                else:
+                    if [[1, p_seq[0]]]+p_seq[1:]+[ftn_idx] not in collection_seq:
+                        collection_seq.append([[1, p_seq[0]]]+p_seq[1:]+[ftn_idx])
             # limit the number of sequences generated
             if len(collection_seq)>=self.seq_num_limit: break
         return collection_seq
