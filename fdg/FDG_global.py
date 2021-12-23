@@ -3,6 +3,9 @@ import numpy as np
 global control_level
 control_level=2
 
+global phase_1_depth
+phase_1_depth=2
+
 global seq_num_limit
 seq_num_limit=5
 global prt_subset_num_limit

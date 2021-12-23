@@ -739,6 +739,7 @@ def execute_command(
         fdg.FDG_global.prt_subset_num_limit = args.parent_subset_number_limit
         fdg.FDG_global.print_ftn_coverage=args.print_ftn_coverage
         fdg.FDG_global.sequences=args.sequences
+        fdg.FDG_global.sequences=args.sequences
 
 
 
