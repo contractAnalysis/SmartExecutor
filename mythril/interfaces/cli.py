@@ -441,7 +441,7 @@ def create_analyzer_parser(analyzer_parser: ArgumentParser):
         "-cl",
         "--control-level",
         type=int,
-        default=2,
+        default=5,
         help="possible values:0,1,2,3,4,5,6,7,8. the control level for sequence generation",
     )
     #@wei
@@ -457,7 +457,7 @@ def create_analyzer_parser(analyzer_parser: ArgumentParser):
         "-pnl",
         "--parent-subset-number-limit",
         type=int,
-        default=5,
+        default=3,
         help="limit the number of seqeunces generated for each function that will be assigned to be executed.",
     )
 
