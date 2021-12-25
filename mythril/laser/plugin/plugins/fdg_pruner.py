@@ -658,7 +658,8 @@ class FDG_pruner(LaserPlugin):
                     # get states for the sequence
                     if key_to_state in self.saved_open_states.keys():
                         self.states_available = self.saved_open_states[key_to_state]
-                    self.states_available = self.saved_open_states_sequence_execution_phase[key_to_state]
+                    else:
+                        self.states_available = self.saved_open_states_sequence_execution_phase[key_to_state]
                     self.states_available_depth = len(self.states_available)
                     self.states_available_depth_index = 0
 
