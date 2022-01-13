@@ -3,21 +3,20 @@
 <p>SmartExecutor is designed to reduce the state space of symbolic execution on smart contracts .</p>
 <p>It is built on top of Mythril.</p>
 
-
-How to install:<br>
-&nbsp;&nbsp; Exactly the same as Mythril below
 <br>
 <br>
 Get it with docker:<br>
 
 ```bash
-$ docker pull 23278942/smartexecutor:v07
+$ docker pull 23278942/smartexecutor
 ```
 
 How to run SmartExecutor:<br>
 ```bash
 $ myth analyze <solidity-file>:<contract-name> -fdg
 ```
+
+Note that all the built-in options in Mythril can be applied except '-t' (assigning the value for tansaction count, i.e., the depth)
 <p>&nbsp;&nbsp;</p>
 <hr>
 
