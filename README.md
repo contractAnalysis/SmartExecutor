@@ -11,7 +11,7 @@ How to install:<br>
 Get it with docker:<br>
 
 ```bash
-$ docker pull 23278942/contract_analysis:SmartExecutor
+$ docker pull 23278942/smartexecutor:v07
 ```
 
 How to run SmartExecutor:<br>
