@@ -5,7 +5,7 @@
 
 
 How to install:<br>
-&nbsp;&nbsp;  xx   Exactly the same as Mythril below
+&nbsp;&nbsp; Exactly the same as Mythril below
 <br>
 <br>
 Get it with docker:<br>
