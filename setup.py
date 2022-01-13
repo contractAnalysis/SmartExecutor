@@ -14,10 +14,10 @@ import os
 import io
 
 # Package meta-data.
-NAME = "mythril"
+NAME = "SmartExecutor"
 DESCRIPTION = "Security analysis tool for Ethereum smart contracts"
-URL = "https://github.com/ConsenSys/mythril"
-AUTHOR = "ConsenSys Dilligence"
+URL = "https://github.com/contractAnalysis/SmartExecutor"
+AUTHOR = None
 AUTHOR_MAIL = None
 REQUIRES_PYTHON = ">=3.6.0"
 
