@@ -3,12 +3,10 @@
 <p>SmartExecutor is designed to reduce the state space of symbolic execution on smart contracts .</p>
 <p>It is built on top of Mythril.</p>
 
-<br>
-<br>
 Get it with docker:<br>
 
 ```bash
-$ docker pull 23278942/smartexecutor
+$ docker pull 23278942/smartexecutor:v07
 ```
 
 How to run SmartExecutor:<br>
